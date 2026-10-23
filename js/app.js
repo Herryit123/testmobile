@@ -106,7 +106,6 @@ document.addEventListener('DOMContentLoaded', function(){
       groups.forEach(function(x){ x.classList.remove('open'); });
       if(!was) g.classList.add('open');
     });
-    if(idx === 0) g.classList.add('open');
   });
 
   var q = document.getElementById('q');
