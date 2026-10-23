@@ -77,37 +77,40 @@ const KIT_URL = "https://cp-to-12.pages.dev/";
 document.addEventListener('DOMContentLoaded', function(){
   var listino = document.getElementById('pagina-listino');
   if(!listino) return;
-  var groups = Array.prototype.slice.call(listino.querySelectorAll('.group'));
-  groups.forEach(function(g, idx){
-    var head = g.querySelector('.group-head');
-    var chips = g.querySelector('.chips');
-    var grid = g.querySelector('.grid');
-    if(!head || !grid) return;
-    var body = document.createElement('div');
-    body.className = 'acc-body';
-    if(chips) body.appendChild(chips);
-    body.appendChild(grid);
-    g.appendChild(body);
-    var chev = document.createElement('span');
-    chev.className = 'acc-chev'; chev.textContent = '\u25BE';
-    head.appendChild(chev);
-    head.classList.add('acc-head');
-    head.addEventListener('click', function(){
-      var was = g.classList.contains('open');
-      groups.forEach(function(x){ x.classList.remove('open'); });
-      if(!was) g.classList.add('open');
-    });
+  var chips = document.getElementById('groupChips');
+  if(!chips || chips.dataset.nav) return;
+  chips.dataset.nav = '1';
+  var head = listino.querySelector('header') || listino.querySelector('.top');
+  if(head && head.parentElement) head.parentElement.insertBefore(chips, head.nextSibling);
+  chips.querySelectorAll('.chip').forEach(function(c){
+    if(c.dataset.group){
+      var short = c.dataset.group.split(',')[0].trim();
+      c.textContent = short;
+    }
   });
+});
 
-  var q = document.getElementById('q');
-  function syncExpand(){
-    var activeChip = listino.querySelector('#groupChips .chip.active');
-    var filtering = (q && q.value.trim().length > 0) || (activeChip && activeChip.dataset.group);
-    listino.classList.toggle('expand-all', !!filtering);
-  }
-  if(q) q.addEventListener('input', function(){ setTimeout(syncExpand, 60); });
-  Array.prototype.forEach.call(listino.querySelectorAll('#groupChips .chip'), function(c){
-    c.addEventListener('click', function(){ setTimeout(syncExpand, 60); });
+;
+
+document.addEventListener('DOMContentLoaded', function(){
+  var listino = document.getElementById('pagina-listino');
+  if(!listino) return;
+  var qq = document.getElementById('q');
+  if(!qq || listino.querySelector('.lens65float')) return;
+  var lens = document.createElement('button');
+  lens.className = 'lens65float'; lens.type = 'button'; lens.setAttribute('aria-label','Cerca un servizio');
+  lens.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="20" y1="20" x2="16.5" y2="16.5"></line></svg>';
+  listino.appendChild(lens);
+  var sr = qq.closest('.search-row') || qq.parentElement;
+  var xb = document.createElement('button');
+  xb.className = 'close65'; xb.type = 'button'; xb.setAttribute('aria-label','Chiudi ricerca'); xb.textContent = '✕';
+  sr.appendChild(xb);
+  lens.addEventListener('click', function(){
+    listino.classList.add('search-on');
+    setTimeout(function(){ try{ qq.focus(); }catch(e){} }, 260);
   });
-  syncExpand();
+  xb.addEventListener('click', function(){
+    qq.value = ''; qq.dispatchEvent(new Event('input'));
+    listino.classList.remove('search-on');
+  });
 });
