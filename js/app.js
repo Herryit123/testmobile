@@ -82,11 +82,9 @@ document.addEventListener('DOMContentLoaded', function(){
   chips.dataset.nav = '1';
   var head = listino.querySelector('header') || listino.querySelector('.top');
   if(head && head.parentElement) head.parentElement.insertBefore(chips, head.nextSibling);
+  var SHORT = {'Identit\u00E0 Digitale, PEC e Firma':'Identit\u00E0 Digitale','Casa e Immobili':'Casa','Certificati e Stato Civile':'Certificati','Casellario Giudiziale':'Casellario','Auto e Motori':'Auto','Aziende e Societ\u00E0':'Aziende','Persone e Reputazione':'Persone','Indagini e Recupero Crediti':'Indagini'};
   chips.querySelectorAll('.chip').forEach(function(c){
-    if(c.dataset.group){
-      var short = c.dataset.group.split(',')[0].trim();
-      c.textContent = short;
-    }
+    if(c.dataset.group && SHORT[c.dataset.group]) c.textContent = SHORT[c.dataset.group];
   });
 });
 
