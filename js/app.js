@@ -71,3 +71,53 @@ subChips.forEach(ch => ch.addEventListener('click', () => {
 ;
 
 const KIT_URL = "https://cp-to-12.pages.dev/";
+
+;
+
+document.addEventListener('DOMContentLoaded', function(){
+  var listino = document.getElementById('pagina-listino');
+  if(!listino) return;
+  var groups = Array.prototype.slice.call(listino.querySelectorAll('.group'));
+  groups.forEach(function(g, idx){
+    var head = g.querySelector('.group-head');
+    var chips = g.querySelector('.chips');
+    var grid = g.querySelector('.grid');
+    if(!head || !grid) return;
+    var nums = Array.prototype.map.call(grid.querySelectorAll('.price'), function(p){
+      var n = parseFloat(p.textContent.replace(/[^0-9,]/g,'').replace(',','.'));
+      return isNaN(n) ? null : n;
+    }).filter(function(n){ return n !== null; });
+    var count = head.querySelector('.count');
+    if(count){
+      var base = (count.textContent||'').replace(/· da.*$/,'').trim();
+      count.textContent = base + (nums.length ? ' · da €' + Math.min.apply(null, nums) : '');
+    }
+    var body = document.createElement('div');
+    body.className = 'acc-body';
+    if(chips) body.appendChild(chips);
+    body.appendChild(grid);
+    g.appendChild(body);
+    var chev = document.createElement('span');
+    chev.className = 'acc-chev'; chev.textContent = '\u25BE';
+    head.appendChild(chev);
+    head.classList.add('acc-head');
+    head.addEventListener('click', function(){
+      var was = g.classList.contains('open');
+      groups.forEach(function(x){ x.classList.remove('open'); });
+      if(!was) g.classList.add('open');
+    });
+    if(idx === 0) g.classList.add('open');
+  });
+
+  var q = document.getElementById('q');
+  function syncExpand(){
+    var activeChip = listino.querySelector('#groupChips .chip.active');
+    var filtering = (q && q.value.trim().length > 0) || (activeChip && activeChip.dataset.group);
+    listino.classList.toggle('expand-all', !!filtering);
+  }
+  if(q) q.addEventListener('input', function(){ setTimeout(syncExpand, 60); });
+  Array.prototype.forEach.call(listino.querySelectorAll('#groupChips .chip'), function(c){
+    c.addEventListener('click', function(){ setTimeout(syncExpand, 60); });
+  });
+  syncExpand();
+});
