@@ -83,15 +83,6 @@ document.addEventListener('DOMContentLoaded', function(){
     var chips = g.querySelector('.chips');
     var grid = g.querySelector('.grid');
     if(!head || !grid) return;
-    var nums = Array.prototype.map.call(grid.querySelectorAll('.price'), function(p){
-      var n = parseFloat(p.textContent.replace(/[^0-9,]/g,'').replace(',','.'));
-      return isNaN(n) ? null : n;
-    }).filter(function(n){ return n !== null; });
-    var count = head.querySelector('.count');
-    if(count){
-      var base = (count.textContent||'').replace(/· da.*$/,'').trim();
-      count.textContent = base + (nums.length ? ' · da €' + Math.min.apply(null, nums) : '');
-    }
     var body = document.createElement('div');
     body.className = 'acc-body';
     if(chips) body.appendChild(chips);
