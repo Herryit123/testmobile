@@ -148,7 +148,10 @@ document.addEventListener('DOMContentLoaded', function(){
     + '<div class="pf-ft"><button onclick="window.print()">\uD83D\uDDA8\uFE0F Stampa / Salva PDF</button><button id="pfCl">\u2715 Chiudi</button></div>';
   document.body.appendChild(pf);
 
-  document.getElementById('cpCl').addEventListener('click', function(){ panel.classList.remove('open'); });
+  document.getElementById('cpCl').addEventListener('click', function(){
+    panel.classList.remove('open');
+    if(LAST_PAID){ var lp = LAST_PAID; LAST_PAID = null; downloadPF(lp.items, lp.tot, lp.ref); }
+  });
   document.getElementById('pfCl').addEventListener('click', function(){ pf.classList.remove('open'); });
   panel.addEventListener('click', function(e){
     var d = e.target.closest('[data-del]');
@@ -174,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function(){
       + '<tr class="pft"><td><b>TOTALE PRO FORMA</b></td><td><b>\u20AC ' + t.toFixed(2) + '</b></td></tr></table>'
       + payline
       + '<p style="font-size:11.5px;color:#5a7a99">Documento non fiscale \u2014 richiesta di pagamento. Lo scontrino fiscale viene rilasciato in negozio al momento del pagamento/rilascio del servizio.</p>'
-      + '<div class="stamp">PRO FORMA \u2014 ' + (paidRef ? 'PAGATA' : 'NON FISCALE') + '</div>';
+      + '<div class="stamp">PRO FORMA \u2014 ' + (paidRef ? 'PAGATA' : 'DA PAGARE') + '</div>';
     pf.classList.add('open');
   }
   document.getElementById('cpPf').addEventListener('click', function(){
@@ -191,8 +194,7 @@ document.addEventListener('DOMContentLoaded', function(){
       var pr = pricebox.querySelector('.prezzo');
       var val = pr ? parseFloat(pr.textContent.replace(/[^0-9,]/g,'').replace(',','.')) : 0;
       var desc = 'Spedizione (preventivo) \u2014 ' + new Date().toLocaleDateString('it-IT');
-      CART.push({n: desc, p: isNaN(val)?0:val}); save();
-      panel.classList.add('open');
+      CART.push({n: desc, p: isNaN(val)?0:val}); save(); bumpCart();
     });
     pricebox.insertAdjacentElement('afterend', b);
 
@@ -246,8 +248,7 @@ document.addEventListener('DOMContentLoaded', function(){
     mb.addEventListener('click', function(ev){
       ev.stopPropagation();
       var val = priceEl ? parseFloat(priceEl.textContent.replace(/[^0-9,]/g,'').replace(',','.')) : NaN;
-      CART.push({n: h4.textContent.trim(), p: isNaN(val)?0:val}); save();
-      panel.classList.add('open');
+      CART.push({n: h4.textContent.trim(), p: isNaN(val)?0:val}); save(); bumpCart();
     });
     buy.appendChild(mb);
     card.appendChild(buy);
@@ -327,8 +328,49 @@ document.addEventListener('DOMContentLoaded', function(){
     }catch(e){}
   }
 
+  var LAST_PAID = null;
+  function loadScript(src, cb){
+    var sc = document.createElement('script');
+    sc.src = src; sc.onload = cb;
+    document.head.appendChild(sc);
+  }
+  function downloadPF(items, t, ref){
+    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', function(){
+      try{
+        var doc = new window.jspdf.jsPDF();
+        doc.setFontSize(16); doc.setTextColor(0,58,112);
+        doc.text('FATTURA PRO FORMA', 105, 18, {align:'center'});
+        doc.setFontSize(10); doc.setTextColor(30,40,55);
+        doc.text('Centro Post@ di Giuliani Enrico', 14, 30);
+        doc.text('Via L.S. Cherubini 68/D, 10138 Torino', 14, 35);
+        doc.text('Pro forma N. PF-2026-' + String(Math.floor(Math.random()*900)+100), 140, 30);
+        doc.text('Data: ' + new Date().toLocaleDateString('it-IT'), 140, 35);
+        var y = 48;
+        doc.setFont(undefined, 'bold');
+        doc.text('Descrizione', 14, y); doc.text('Importo', 196, y, {align:'right'});
+        doc.setDrawColor(0,58,112); doc.line(14, y+2, 196, y+2);
+        y += 9; doc.setFont(undefined, 'normal');
+        items.forEach(function(c){
+          doc.text(doc.splitTextToSize(c.n, 140), 14, y);
+          doc.text('EUR ' + c.p.toFixed(2), 196, y, {align:'right'});
+          y += 8;
+        });
+        y += 4; doc.setFont(undefined, 'bold'); doc.setFontSize(12);
+        doc.text('TOTALE: EUR ' + t.toFixed(2), 196, y, {align:'right'});
+        y += 13;
+        doc.setTextColor(28,122,61); doc.setFontSize(11);
+        doc.text('PAGATA via PayPal - ordine ' + ref, 14, y);
+        doc.setTextColor(180,30,30); doc.setFontSize(13);
+        doc.text('PRO FORMA - PAGATA', 105, y+18, {align:'center'});
+        doc.setTextColor(90,110,130); doc.setFontSize(8);
+        doc.text('Documento non fiscale - richiesta di pagamento. Scontrino fiscale rilasciato in negozio.', 14, y+32);
+        doc.save('pro-forma-' + ref + '.pdf');
+      }catch(e){}
+    });
+  }
   function markPaid(orderId){
     var paidItems = CART.slice(), paidTot = tot();
+    LAST_PAID = { items: paidItems, tot: paidTot, ref: orderId };
     sendSheet('pagato', 'PayPal ' + orderId);
     CART = []; save();
     document.getElementById('cpBd').innerHTML =
@@ -345,6 +387,17 @@ document.addEventListener('DOMContentLoaded', function(){
     renderPP();
   }
 
+  function bumpCart(){
+    cartBtn.style.transform = 'scale(1.3)';
+    setTimeout(function(){ cartBtn.style.transform = ''; }, 200);
+    var t = document.createElement('div');
+    t.textContent = '\u2715 Aggiunto al carrello \u2713'.replace('\u2715 ','');
+    t.style.cssText = 'position:fixed;right:80px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:945;background:#003A70;color:#FFCC00;font:800 13px Poppins;padding:9px 16px;border-radius:999px;border:2px solid #FFCC00;box-shadow:0 6px 16px rgba(0,0,0,.3);transition:opacity .4s';
+    t.textContent = 'Aggiunto al carrello \u2713';
+    document.body.appendChild(t);
+    setTimeout(function(){ t.style.opacity = '0'; setTimeout(function(){ t.remove(); }, 400); }, 1300);
+  }
+
   function renderCart(){
     cartBtn.querySelector('.n').textContent = CART.length;
     var bd = document.getElementById('cpBd');
@@ -356,6 +409,8 @@ document.addEventListener('DOMContentLoaded', function(){
     if(!CART.length) h = '<p style="text-align:center;color:#8aa0b8;padding:24px 10px">Carrello vuoto.<br>Aggiungi una spedizione o un servizio.</p>';
     if(!bd.querySelector('h3')) bd.innerHTML = h;
     document.getElementById('cpTot').textContent = '\u20AC ' + t.toFixed(2);
+    document.getElementById('cpPf').style.display = CART.length ? '' : 'none';
+    document.getElementById('cpWa').style.display = CART.length ? '' : 'none';
     renderPP();
   }
 
