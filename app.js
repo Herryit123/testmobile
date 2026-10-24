@@ -249,7 +249,13 @@ document.addEventListener('DOMContentLoaded', function(){
     return { n: rows.length, kg: peso };
   }
   function wizReady(){
-    return wv('mNome') && wv('dNome') && wv('dCitta') && wv('dCap');
+    var need = ['mNome','mTel','dNome','dCogn','dTel','dCitta','dProv','dVia','dCiv','dCap','sContenuto'];
+    for(var i=0;i<need.length;i++){ if(!wv(need[i])) return false; }
+    if(typeof pickup !== 'undefined' && pickup === 'home'){
+      var m = ['mVia','mCiv','mCap','mCitta'];
+      for(var j=0;j<m.length;j++){ if(!wv(m[j])) return false; }
+    }
+    return true;
   }
   function wizData(){
     var cp = wizColliPeso();
@@ -310,6 +316,7 @@ document.addEventListener('DOMContentLoaded', function(){
               sendSheet('pagato', 'PayPal ' + det.id);
               buildPF([{ n: di.desc, p: tp }], tp, det.id, { det: di.detL, cli: di.cliL });
               downloadPF([{ n: di.desc, p: tp }], tp, det.id, { det: di.detL, cli: di.cliL });
+              setTimeout(function(){ try{ window.print(); }catch(e){} }, 600);
             });
           },
           onError: function(){ alert('Pagamento non riuscito. Riprova o contattaci su WhatsApp.'); }
@@ -335,6 +342,7 @@ document.addEventListener('DOMContentLoaded', function(){
     sendSheet('da pagare', 'Paga in contanti');
     buildPF([{ n: d.desc, p: t }], t, null, { det: d.detL, cli: d.cliL });
     downloadPF([{ n: d.desc, p: t }], t, null, { det: d.detL, cli: d.cliL });
+    setTimeout(function(){ try{ window.print(); }catch(e){} }, 600);
   });
 
   }
