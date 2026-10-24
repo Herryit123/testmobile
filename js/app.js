@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var msg = 'Buongiorno, vorrei confermare questo ordine:\n' + CART.map(function(c){ return '\u2022 ' + c.n + ' \u2014 \u20AC ' + c.p.toFixed(2); }).join('\n') + '\nTotale: \u20AC ' + tot().toFixed(2) + '\nGrazie!';
     window.open('https://wa.me/' + (typeof WHATSAPP !== 'undefined' ? WHATSAPP : '') + '?text=' + encodeURIComponent(msg), '_blank');
   });
-  function buildPF(items, t, paidRef){
+  function buildPF(items, t, paidRef, detHTML){
     var rows = '';
     items.forEach(function(c){ rows += '<tr class="pfr"><td>' + c.n + '</td><td>\u20AC ' + c.p.toFixed(2) + '</td></tr>'; });
     var num = 'PF-2026-' + String(Math.floor(Math.random()*900)+100);
@@ -173,6 +173,7 @@ document.addEventListener('DOMContentLoaded', function(){
       '<h2>FATTURA PRO FORMA</h2>'
       + '<div class="pfh"><div><b>Centro Post@ di Giuliani Enrico</b><br>Via L.S. Cherubini 68/D, 10138 Torino</div>'
       + '<div style="text-align:right">Pro forma N. <b>' + num + '</b><br>Data: ' + new Date().toLocaleDateString('it-IT') + '</div></div>'
+      + (detHTML || '')
       + '<table><tr><th>Descrizione</th><th>Importo</th></tr>' + rows
       + '<tr class="pft"><td><b>TOTALE PRO FORMA</b></td><td><b>\u20AC ' + t.toFixed(2) + '</b></td></tr></table>'
       + payline
@@ -186,54 +187,93 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 
   var pricebox = document.querySelector('#pagina-preventivo .pricebox');
-  if(pricebox && !document.getElementById('addShip65')){
-    var b = document.createElement('button');
-    b.id = 'addShip65'; b.className = 'addcart65'; b.type = 'button';
-    b.textContent = '\uD83D\uDED2 AGGIUNGI AL CARRELLO';
-    b.addEventListener('click', function(){
-      var pr = pricebox.querySelector('.prezzo');
-      var val = pr ? parseFloat(pr.textContent.replace(/[^0-9,]/g,'').replace(',','.')) : 0;
-      var desc = 'Spedizione (preventivo) \u2014 ' + new Date().toLocaleDateString('it-IT');
-      CART.push({n: desc, p: isNaN(val)?0:val}); save(); bumpCart();
+  if(pricebox){
+  function wv(id){ var e = document.getElementById(id); return e ? e.value.trim() : ''; }
+  function wizPrice(){
+    var pr = pricebox.querySelector('.prezzo') || document.getElementById('resPrice');
+    var v = pr ? parseFloat(pr.textContent.replace(/[^0-9,]/g,'').replace(',','.')) : 0;
+    return isNaN(v) ? 0 : v;
+  }
+  function wizColliPeso(){
+    var rows = Array.prototype.filter.call(
+      document.querySelectorAll('#nazBody tr, #intBody tr'),
+      function(r){ return r.offsetParent !== null; });
+    var peso = 0;
+    rows.forEach(function(r){
+      var inp = r.cells && r.cells[1] ? r.cells[1].querySelector('input') : null;
+      var v = inp ? parseFloat(inp.value.replace(',','.')) : 0;
+      if(!isNaN(v)) peso += v;
     });
-    pricebox.insertAdjacentElement('afterend', b);
+    return { n: rows.length, kg: peso };
+  }
+  function wizReady(){
+    return wv('mNome') && wv('dNome') && wv('dCitta') && wv('dCap');
+  }
+  function wizData(){
+    var cp = wizColliPeso();
+    var from = [wv('mNome'), [wv('mVia'), wv('mCiv')].filter(Boolean).join(' '),
+                [wv('mCap'), wv('mCitta')].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    var toArr = [wv('dNome'), wv('dCogn')].filter(Boolean).join(' ');
+    var to = [toArr, [wv('dVia'), wv('dCiv')].filter(Boolean).join(' '),
+              [[wv('dCap'), wv('dCitta')].filter(Boolean).join(' '), wv('dProv')].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    var desc = 'Spedizione ' + (wv('mCitta')||'——') + ' \u2192 ' + (wv('dCitta')||'——')
+      + (wv('dProv') ? ' (' + wv('dProv') + ')' : '')
+      + ' \u2014 ' + cp.n + (cp.n===1?' collo':' colli') + (cp.kg ? ', ' + String(cp.kg).replace('.',',') + ' kg' : '');
+    var det = '<div class="pfh" style="margin-top:2px">'
+      + '<div><b>Spedizione da:</b><br>' + (from||'\u2014') + '</div>'
+      + '<div style="text-align:right"><b>A:</b><br>' + (to||'\u2014') + '</div></div>'
+      + '<p style="font-size:12px;color:#5a7a99;margin:6px 0 0">'
+      + cp.n + (cp.n===1?' collo':' colli') + (cp.kg ? ' \u00B7 Peso totale: ' + String(cp.kg).replace('.',',') + ' kg' : '')
+      + (wv('sContenuto') ? ' \u00B7 Contenuto: ' + wv('sContenuto') : '') + '</p>';
+    return { desc: desc, det: det };
+  }
 
-    var ppWiz = document.createElement('div');
-    ppWiz.id = 'ppWiz';
-    ppWiz.style.marginTop = '10px';
-    b.insertAdjacentElement('afterend', ppWiz);
-    function wizPrice(){
-      var pr = pricebox.querySelector('.prezzo');
-      var v = pr ? parseFloat(pr.textContent.replace(/[^0-9,]/g,'').replace(',','.')) : 0;
-      return isNaN(v) ? 0 : v;
-    }
-    function renderWizPP(){
-      loadPP(function(){
-        if(!window.paypal || !document.getElementById('ppWiz')) return;
-        try{
-          document.getElementById('ppWiz').innerHTML = '';
-          paypal.Buttons({
-            style: { layout:'vertical', color:'gold', shape:'pill', label:'paypal', height:40 },
-            createOrder: function(d, a){
-              return a.order.create({ purchase_units: [{ amount: { value: wizPrice().toFixed(2), currency_code:'EUR' }, description:'Centro Post@ \u2014 spedizione' }] });
-            },
-            onApprove: function(d, a){
-              return a.order.capture().then(function(det){
-                sendSheet('pagato', 'PayPal ' + det.id);
-                buildPF([{n:'Spedizione (preventivo online)', p: wizPrice()}], wizPrice(), det.id);
-              });
-            },
-            onError: function(){ alert('Pagamento non riuscito. Riprova o contattaci su WhatsApp.'); }
-          }).render('#ppWiz');
-        }catch(e){}
-      });
-    }
-    if('IntersectionObserver' in window){
-      var io = new IntersectionObserver(function(es){
-        es.forEach(function(e){ if(e.isIntersecting){ renderWizPP(); io.disconnect(); } });
-      }, {threshold:.2});
-      io.observe(ppWiz);
-    } else { renderWizPP(); }
+  var acts = document.createElement('div');
+  acts.id = 'wizActs';
+  acts.style.cssText = 'display:none;margin-top:12px';
+  acts.innerHTML =
+    '<button class="addcart65" id="btnQuote" type="button">\uD83D\uDDA8\uFE0F STAMPA PREVENTIVO</button>'
+    + '<button class="addcart65" id="btnStore" type="button" style="background:#003A70;color:#FFCC00;border-color:#FFCC00">\uD83C\uDFEA PAGA IN NEGOZIO</button>'
+    + '<button class="addcart65" id="btnCartW" type="button">\uD83D\uDED2 AGGIUNGI AL CARRELLO</button>';
+  pricebox.insertAdjacentElement('afterend', acts);
+
+  function refreshActs(){
+    var on = wizReady() && wizPrice() > 0 && !!pricebox.offsetParent;
+    acts.style.display = on ? 'block' : 'none';
+  }
+  ['input','change','click'].forEach(function(ev){
+    document.getElementById('pagina-preventivo').addEventListener(ev, function(){ setTimeout(refreshActs, 60); });
+  });
+  refreshActs();
+
+  document.getElementById('btnCartW').addEventListener('click', function(){
+    if(!wizReady()) return;
+    var d = wizData();
+    CART.push({ n: d.desc, p: wizPrice() }); save(); bumpCart();
+  });
+  document.getElementById('btnStore').addEventListener('click', function(){
+    if(!wizReady()) return;
+    var d = wizData(), t = wizPrice();
+    sendSheet('da pagare', 'Paga in negozio');
+    buildPF([{ n: d.desc, p: t }], t, null, d.det);
+  });
+  document.getElementById('btnQuote').addEventListener('click', function(){
+    if(!wizReady()) return;
+    var d = wizData(), t = wizPrice();
+    var num = 'PR-2026-' + String(Math.floor(Math.random()*900)+100);
+    document.getElementById('pfDoc').innerHTML =
+      '<h2>PREVENTIVO DI SPEDIZIONE</h2>'
+      + '<div class="pfh"><div><b>Centro Post@ di Giuliani Enrico</b><br>Via L.S. Cherubini 68/D, 10138 Torino</div>'
+      + '<div style="text-align:right">Preventivo N. <b>' + num + '</b><br>Data: ' + new Date().toLocaleDateString('it-IT') + '</div></div>'
+      + d.det
+      + '<table style="margin-top:14px"><tr><th>Descrizione</th><th>Importo</th></tr>'
+      + '<tr class="pfr"><td>' + d.desc + '</td><td>\u20AC ' + t.toFixed(2) + '</td></tr>'
+      + '<tr class="pft"><td><b>TOTALE PREVENTIVO</b></td><td><b>\u20AC ' + t.toFixed(2) + '</b></td></tr></table>'
+      + '<p style="font-size:11.5px;color:#5a7a99">Preventivo valido 30 giorni. Documento non fiscale.</p>'
+      + '<div class="stamp">PREVENTIVO \u2014 NON FISCALE</div>';
+    pf.classList.add('open');
+  });
+
   }
 
   document.querySelectorAll('#pagina-listino .card').forEach(function(card){
