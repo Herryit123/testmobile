@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('pfCl').addEventListener('click', function(){ pf.classList.remove('open'); });
   panel.addEventListener('click', function(e){
     var d = e.target.closest('[data-del]');
-    if(d){ CART.splice(+d.dataset.del,1); save(); }
+    if(d){ CART.splice(+d.dataset.del,1); save(); renderPP(); }
   });
   document.getElementById('cpWa').addEventListener('click', function(){
     if(!CART.length) return;
@@ -223,6 +223,7 @@ document.addEventListener('DOMContentLoaded', function(){
     document.head.appendChild(sc);
   }
   function renderPP(){
+    if(!panel.classList.contains('open')) return;
     loadPP(function(){
       if(!window.paypal || !document.getElementById('cpPP')) return;
       document.getElementById('cpPP').innerHTML = '';
@@ -290,6 +291,9 @@ document.addEventListener('DOMContentLoaded', function(){
     if(!CART.length) return;
     sendSheet('da pagare', 'WhatsApp');
   });
-  cartBtn.addEventListener('click', function(){ panel.classList.add('open'); renderCart(); });
+  cartBtn.addEventListener('click', function(){
+    panel.classList.add('open'); renderCart();
+    setTimeout(renderPP, 320);
+  });
   renderCart();
 });
