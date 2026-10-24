@@ -284,21 +284,45 @@ document.addEventListener('DOMContentLoaded', function(){
   wizEnd.id = 'wizEnd';
   wizEnd.style.cssText = 'display:none;margin-top:12px';
   wizEnd.innerHTML =
-    '<button class="addcart65" id="btnCart4" type="button">\uD83D\uDED2 AGGIUNGI AL CARRELLO</button>'
-    + '<button class="addcart65" id="btnQuote" type="button" style="margin-top:8px;background:#003A70;color:#FFCC00;border-color:#FFCC00">\uD83D\uDDA8\uFE0F STAMPA E PAGA IN CONTANTI</button>';
+    '<div id="ppWiz" style="margin:0 0 8px"></div>'
+    + '<button class="addcart65" id="btnQuote" type="button" style="background:#003A70;color:#FFCC00;border-color:#FFCC00">\uD83D\uDDA8\uFE0F STAMPA E PAGA IN CONTANTI</button>';
   var card4 = document.querySelectorAll('#pagina-preventivo .wstep');
   if(card4.length >= 4) card4[3].appendChild(wizEnd);
   else pricebox.insertAdjacentElement('afterend', wizEnd);
-  document.getElementById('btnCart4').addEventListener('click', function(){
-    if(!wizReady()) return;
-    var d = wizData();
-    CART.push({ n: d.desc, p: wizPrice(), det: d.detL, cli: d.cliL }); save(); bumpCart();
-  });
+  function renderWizPP(){
+    var el = document.getElementById('ppWiz');
+    if(!el || !wizReady() || !(wizPrice() > 0)) return;
+    var cur = wizPrice().toFixed(2);
+    if(el.dataset.p === cur && el.innerHTML) return;
+    el.dataset.p = cur;
+    loadPP(function(){
+      if(!window.paypal || !document.getElementById('ppWiz')) return;
+      try{
+        document.getElementById('ppWiz').innerHTML = '';
+        paypal.Buttons({
+          style: { layout:'vertical', color:'gold', shape:'pill', label:'paypal', height: 42 },
+          createOrder: function(d, a){
+            return a.order.create({ purchase_units: [{ amount: { value: wizPrice().toFixed(2), currency_code:'EUR' }, description:'Centro Post@ \u2014 spedizione' }] });
+          },
+          onApprove: function(d, a){
+            return a.order.capture().then(function(det){
+              var di = wizData(), tp = wizPrice();
+              sendSheet('pagato', 'PayPal ' + det.id);
+              buildPF([{ n: di.desc, p: tp }], tp, det.id, { det: di.detL, cli: di.cliL });
+              downloadPF([{ n: di.desc, p: tp }], tp, det.id, { det: di.detL, cli: di.cliL });
+            });
+          },
+          onError: function(){ alert('Pagamento non riuscito. Riprova o contattaci su WhatsApp.'); }
+        }).render('#ppWiz');
+      }catch(e){}
+    });
+  }
 
   function refreshActs(){
     var on = wizReady() && wizPrice() > 0;
     var we = document.getElementById('wizEnd');
     if(we) we.style.display = on ? 'block' : 'none';
+    if(on) setTimeout(renderWizPP, 150);
   }
   ['input','change','click'].forEach(function(ev){
     document.getElementById('pagina-preventivo').addEventListener(ev, function(){ setTimeout(refreshActs, 60); });
