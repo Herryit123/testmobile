@@ -159,20 +159,27 @@ document.addEventListener('DOMContentLoaded', function(){
     var msg = 'Buongiorno, vorrei confermare questo ordine:\n' + CART.map(function(c){ return '\u2022 ' + c.n + ' \u2014 \u20AC ' + c.p.toFixed(2); }).join('\n') + '\nTotale: \u20AC ' + tot().toFixed(2) + '\nGrazie!';
     window.open('https://wa.me/' + (typeof WHATSAPP !== 'undefined' ? WHATSAPP : '') + '?text=' + encodeURIComponent(msg), '_blank');
   });
-  document.getElementById('cpPf').addEventListener('click', function(){
-    if(!CART.length) return;
-    var rows = '', t = tot();
-    CART.forEach(function(c){ rows += '<tr class="pfr"><td>' + c.n + '</td><td>\u20AC ' + c.p.toFixed(2) + '</td></tr>'; });
+  function buildPF(items, t, paidRef){
+    var rows = '';
+    items.forEach(function(c){ rows += '<tr class="pfr"><td>' + c.n + '</td><td>\u20AC ' + c.p.toFixed(2) + '</td></tr>'; });
     var num = 'PF-2026-' + String(Math.floor(Math.random()*900)+100);
+    var payline = paidRef
+      ? '<p style="font-size:12.5px;color:#1c7a3d;font-weight:800;margin:8px 0">\u2705 PAGATA via PayPal \u2014 ordine ' + paidRef + '</p>'
+      : '<p style="font-size:12.5px;color:#b07d00;font-weight:800;margin:8px 0">\u23F1 Da pagare \u2014 il pagamento avverr\u00E0 in negozio o via link</p>';
     document.getElementById('pfDoc').innerHTML =
       '<h2>FATTURA PRO FORMA</h2>'
       + '<div class="pfh"><div><b>Centro Post@ di Giuliani Enrico</b><br>Via L.S. Cherubini 68/D, 10138 Torino</div>'
       + '<div style="text-align:right">Pro forma N. <b>' + num + '</b><br>Data: ' + new Date().toLocaleDateString('it-IT') + '</div></div>'
       + '<table><tr><th>Descrizione</th><th>Importo</th></tr>' + rows
       + '<tr class="pft"><td><b>TOTALE PRO FORMA</b></td><td><b>\u20AC ' + t.toFixed(2) + '</b></td></tr></table>'
+      + payline
       + '<p style="font-size:11.5px;color:#5a7a99">Documento non fiscale \u2014 richiesta di pagamento. Lo scontrino fiscale viene rilasciato in negozio al momento del pagamento/rilascio del servizio.</p>'
-      + '<div class="stamp">PRO FORMA \u2014 NON FISCALE</div>';
+      + '<div class="stamp">PRO FORMA \u2014 ' + (paidRef ? 'PAGATA' : 'NON FISCALE') + '</div>';
     pf.classList.add('open');
+  }
+  document.getElementById('cpPf').addEventListener('click', function(){
+    if(!CART.length) return;
+    buildPF(CART.slice(), tot(), null);
   });
 
   var pricebox = document.querySelector('#pagina-preventivo .pricebox');
@@ -284,6 +291,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   function markPaid(orderId){
+    var paidItems = CART.slice(), paidTot = tot();
     sendSheet('pagato', 'PayPal ' + orderId);
     CART = []; save();
     document.getElementById('cpBd').innerHTML =
@@ -291,9 +299,12 @@ document.addEventListener('DOMContentLoaded', function(){
       + '<div style="font-size:52px">\u2705</div>'
       + '<h3 style="font:800 20px Poppins;color:#003A70;margin:12px 0 6px">Pagamento ricevuto!</h3>'
       + '<p style="color:#5a7a99;font-size:13.5px">Ordine PayPal <b>' + orderId + '</b><br>Riceverai la conferma via email.<br>Porta la pro forma in negozio o inviala su WhatsApp.</p>'
-      + '<button class="cp-act cp-pf" style="margin-top:16px" onclick="document.getElementById(\'cpPf\').click()">\uD83D\uDCC4 Vedi fattura pro forma</button>'
+      + '<button class="cp-act cp-pf" style="margin-top:16px" id="cpPfPaid">\uD83D\uDCC4 Vedi fattura pro forma</button>'
       + '</div>';
     document.getElementById('cpTot').textContent = '\u20AC 0,00';
+    document.getElementById('cpPfPaid').addEventListener('click', function(){
+      buildPF(paidItems, paidTot, orderId);
+    });
     renderPP();
   }
 
