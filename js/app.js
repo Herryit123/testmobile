@@ -255,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function(){
     try{
       el.innerHTML = '';
       paypal.Buttons({
-        style: { layout:'vertical', color:'gold', shape:'pill', label:'paypal' },
+        style: { layout:'vertical', color:'gold', shape:'pill', label:'paypal', height: 42 },
         createOrder: function(data, actions){
           return actions.order.create({
             purchase_units: [{ amount: { value: tot().toFixed(2), currency_code:'EUR' },
