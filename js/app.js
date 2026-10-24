@@ -209,24 +209,43 @@ document.addEventListener('DOMContentLoaded', function(){
     card.appendChild(buy);
   });
 
-  var PP_CLIENT_ID = "EP7p71v20g-a2cg2WR0wgjhGfm9H5XBYDBfkpNNZU2OjpQZMrpPBrc2N252GB0_19kZTNRaCIa_6Yc0r";
+  var PP_CLIENT_ID = "BAAW_DzibYtBczKX8e-SgiZikxgifdrznDxWzIsi4x4rvus4oPTJqjEc4ECSQ70hri2Q_ovVRyjmftG4vQ";
   var PP_SANDBOX = true; // ← false quando vai in produzione col Client ID live
-  var ppLoaded = false;
+  var ppTries = 0;
   function loadPP(cb){
     if(window.paypal) return cb();
-    if(ppLoaded) return;
-    ppLoaded = true;
+    if(ppTries >= 3) return fallbackPP();
+    ppTries++;
     var sc = document.createElement('script');
     sc.src = (PP_SANDBOX ? 'https://www.sandbox.paypal.com' : 'https://www.paypal.com')
       + '/sdk/js?client-id=' + PP_CLIENT_ID + '&currency=EUR&intent=capture';
-    sc.onload = cb; sc.onerror = function(){};
+    sc.onload = cb;
+    sc.onerror = function(){ setTimeout(function(){ loadPP(cb); }, 1500); };
     document.head.appendChild(sc);
+
+    setTimeout(function(){
+      if(!window.paypal) fallbackPP();
+    }, 6000);
+  }
+  function fallbackPP(){
+    if(!panel.classList.contains('open')) return;
+    var el = document.getElementById('cpPP'); if(!el) return;
+    if(el.dataset.fb) return; el.dataset.fb = '1';
+    el.innerHTML = '<a class="cp-act cp-pay" style="display:block" target="_blank" rel="noopener" href="' + PP_LINK + tot().toFixed(2) + '">\uD83D\uDCB3 PAGA \u20AC ' + tot().toFixed(2) + ' (PayPal sicuro)</a>'
+      + '<p style="font-size:11px;color:#8aa0b8;text-align:center;margin-top:6px">Pagamento con link diretto PayPal.Me</p>';
   }
   function renderPP(){
     if(!panel.classList.contains('open')) return;
+    var el = document.getElementById('cpPP');
+    if(el) delete el.dataset.fb;
+    if(!window.paypal){
+      el.innerHTML = '<p style="text-align:center;color:#8aa0b8;font-size:12.5px;padding:10px">Caricamento PayPal in corso\u2026</p>';
+    }
     loadPP(function(){
       if(!window.paypal || !document.getElementById('cpPP')) return;
+      try{
       document.getElementById('cpPP').innerHTML = '';
+      delete document.getElementById('cpPP').dataset.fb;
       if(!CART.length){
         document.getElementById('cpPP').innerHTML = '<p style="text-align:center;color:#8aa0b8;font-size:12.5px;padding:6px">Aggiungi qualcosa per pagare con PayPal</p>';
         return;
@@ -246,6 +265,7 @@ document.addEventListener('DOMContentLoaded', function(){
         },
         onError: function(){ alert('Pagamento non riuscito. Riprova o contattaci su WhatsApp.'); }
       }).render('#cpPP');
+      }catch(err){ fallbackPP(); }
     });
   }
   function sendSheet(stato, ref){
