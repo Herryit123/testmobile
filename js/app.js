@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', function(){
     + '<div class="cp-bd" id="cpBd"></div>'
     + '<div class="cp-ft">'
     + '<div class="cp-tot"><span>TOTALE</span><b id="cpTot">\u20AC 0,00</b></div>'
-    + '<a class="cp-act cp-pay" id="cpPay" href="#" target="_blank" rel="noopener">\uD83D\uDCB3 PAGA CON PAYPAL</a>'
+    + '<div id="cpPP" style="min-height:50px"></div>'
     + '<button class="cp-act cp-pf" id="cpPf">\uD83D\uDCC4 FATTURA PRO FORMA</button>'
     + '<button class="cp-act cp-wa" id="cpWa">\uD83D\uDCAC INVIA ORDINE SU WHATSAPP</button>'
     + '<button class="cp-act cp-cl" id="cpCl">\u2715 Chiudi</button></div>';
@@ -148,7 +148,6 @@ document.addEventListener('DOMContentLoaded', function(){
     + '<div class="pf-ft"><button onclick="window.print()">\uD83D\uDDA8\uFE0F Stampa / Salva PDF</button><button id="pfCl">\u2715 Chiudi</button></div>';
   document.body.appendChild(pf);
 
-  cartBtn.addEventListener('click', function(){ panel.classList.add('open'); renderCart(); });
   document.getElementById('cpCl').addEventListener('click', function(){ panel.classList.remove('open'); });
   document.getElementById('pfCl').addEventListener('click', function(){ pf.classList.remove('open'); });
   panel.addEventListener('click', function(e){
@@ -210,29 +209,87 @@ document.addEventListener('DOMContentLoaded', function(){
     card.appendChild(buy);
   });
 
+  var PP_CLIENT_ID = "EP7p71v20g-a2cg2WR0wgjhGfm9H5XBYDBfkpNNZU2OjpQZMrpPBrc2N252GB0_19kZTNRaCIa_6Yc0r";
+  var PP_SANDBOX = true; // ← false quando vai in produzione col Client ID live
+  var ppLoaded = false;
+  function loadPP(cb){
+    if(window.paypal) return cb();
+    if(ppLoaded) return;
+    ppLoaded = true;
+    var sc = document.createElement('script');
+    sc.src = (PP_SANDBOX ? 'https://www.sandbox.paypal.com' : 'https://www.paypal.com')
+      + '/sdk/js?client-id=' + PP_CLIENT_ID + '&currency=EUR&intent=capture';
+    sc.onload = cb; sc.onerror = function(){};
+    document.head.appendChild(sc);
+  }
+  function renderPP(){
+    loadPP(function(){
+      if(!window.paypal || !document.getElementById('cpPP')) return;
+      document.getElementById('cpPP').innerHTML = '';
+      if(!CART.length){
+        document.getElementById('cpPP').innerHTML = '<p style="text-align:center;color:#8aa0b8;font-size:12.5px;padding:6px">Aggiungi qualcosa per pagare con PayPal</p>';
+        return;
+      }
+      paypal.Buttons({
+        style: { layout:'vertical', color:'gold', shape:'pill', label:'paypal' },
+        createOrder: function(data, actions){
+          return actions.order.create({
+            purchase_units: [{ amount: { value: tot().toFixed(2), currency_code:'EUR' },
+              description: 'Centro Post@ — ordine online' }]
+          });
+        },
+        onApprove: function(data, actions){
+          return actions.order.capture().then(function(details){
+            markPaid(details.id);
+          });
+        },
+        onError: function(){ alert('Pagamento non riuscito. Riprova o contattaci su WhatsApp.'); }
+      }).render('#cpPP');
+    });
+  }
+  function sendSheet(stato, ref){
+    if(!(SHEET_URL && /^https:\/\//.test(SHEET_URL))) return;
+    try{
+      fetch(SHEET_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({
+        cliente:'', telefono:'',
+        dettaglio: CART.map(function(c){ return c.n + ' (\u20AC ' + c.p.toFixed(2) + ')'; }).join(' | '),
+        totale: tot().toFixed(2), ref: ref || '', stato: stato
+      })}).catch(function(){});
+    }catch(e){}
+  }
+  function markPaid(orderId){
+    sendSheet('pagato', 'PayPal ' + orderId);
+    CART = []; save();
+    document.getElementById('cpBd').innerHTML =
+      '<div style="text-align:center;padding:40px 16px">'
+      + '<div style="font-size:52px">\u2705</div>'
+      + '<h3 style="font:800 20px Poppins;color:#003A70;margin:12px 0 6px">Pagamento ricevuto!</h3>'
+      + '<p style="color:#5a7a99;font-size:13.5px">Ordine PayPal <b>' + orderId + '</b><br>Riceverai la conferma via email.<br>Porta la pro forma in negozio o inviala su WhatsApp.</p>'
+      + '<button class="cp-act cp-pf" style="margin-top:16px" onclick="document.getElementById(\'cpPf\').click()">\uD83D\uDCC4 Vedi fattura pro forma</button>'
+      + '</div>';
+    document.getElementById('cpTot').textContent = '\u20AC 0,00';
+    renderPP();
+  }
+
   function tot(){ return CART.reduce(function(a,c){ return a + c.p; }, 0); }
   function renderCart(){
     cartBtn.querySelector('.n').textContent = CART.length;
-    var bd = document.getElementById('cpBd'), h = '', t = tot();
+    var bd = document.getElementById('cpBd');
+    if(!panel.classList.contains('open') || bd.querySelector('[style*="text-align:center"]')){  }
+    var h = '', t = tot();
     CART.forEach(function(c,i){
       h += '<div class="cp-it"><b>' + c.n + '</b><span>\u20AC ' + c.p.toFixed(2) + '</span><button data-del="' + i + '">\u2715</button></div>';
     });
     if(!CART.length) h = '<p style="text-align:center;color:#8aa0b8;padding:24px 10px">Carrello vuoto.<br>Aggiungi una spedizione o un servizio.</p>';
-    bd.innerHTML = h;
+    if(!bd.querySelector('h3')) bd.innerHTML = h;
     document.getElementById('cpTot').textContent = '\u20AC ' + t.toFixed(2);
-    var pay = document.getElementById('cpPay');
-    pay.href = PP_LINK + t.toFixed(2);
-    pay.style.opacity = CART.length ? '1' : '.45';
-
-    if(SHEET_URL && /^https:\/\//.test(SHEET_URL) && CART.length){
-      try{
-        fetch(SHEET_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({
-          cliente:'', telefono:'',
-          dettaglio: CART.map(function(c){ return c.n + ' (\u20AC ' + c.p.toFixed(2) + ')'; }).join(' | '),
-          totale: t.toFixed(2), ref:'paypal.me/herry0196/' + t.toFixed(2)
-        })}).catch(function(){});
-      }catch(e){}
-    }
+    renderPP();
   }
+
+  document.getElementById('cpWa').addEventListener('click', function(){
+    if(!CART.length) return;
+    sendSheet('da pagare', 'WhatsApp');
+  });
+  cartBtn.addEventListener('click', function(){ panel.classList.add('open'); renderCart(); });
   renderCart();
 });
