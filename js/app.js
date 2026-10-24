@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var msg = 'Buongiorno, vorrei confermare questo ordine:\n' + CART.map(function(c){ return '\u2022 ' + c.n + ' \u2014 \u20AC ' + c.p.toFixed(2); }).join('\n') + '\nTotale: \u20AC ' + tot().toFixed(2) + '\nGrazie!';
     window.open('https://wa.me/' + (typeof WHATSAPP !== 'undefined' ? WHATSAPP : '') + '?text=' + encodeURIComponent(msg), '_blank');
   });
-  function buildPF(items, t, paidRef, detHTML){
+  function buildPF(items, t, paidRef, detHTML, cliHTML){
     var rows = '';
     items.forEach(function(c){ rows += '<tr class="pfr"><td>' + c.n + '</td><td>\u20AC ' + c.p.toFixed(2) + '</td></tr>'; });
     var num = 'PF-2026-' + String(Math.floor(Math.random()*900)+100);
@@ -173,6 +173,7 @@ document.addEventListener('DOMContentLoaded', function(){
       '<h2>FATTURA PRO FORMA</h2>'
       + '<div class="pfh"><div><b>Centro Post@ di Giuliani Enrico</b><br>Via L.S. Cherubini 68/D, 10138 Torino</div>'
       + '<div style="text-align:right">Pro forma N. <b>' + num + '</b><br>Data: ' + new Date().toLocaleDateString('it-IT') + '</div></div>'
+      + (cliHTML || '')
       + (detHTML || '')
       + '<table><tr><th>Descrizione</th><th>Importo</th></tr>' + rows
       + '<tr class="pft"><td><b>TOTALE PRO FORMA</b></td><td><b>\u20AC ' + t.toFixed(2) + '</b></td></tr></table>'
@@ -225,21 +226,47 @@ document.addEventListener('DOMContentLoaded', function(){
       + '<p style="font-size:12px;color:#5a7a99;margin:6px 0 0">'
       + cp.n + (cp.n===1?' collo':' colli') + (cp.kg ? ' \u00B7 Peso totale: ' + String(cp.kg).replace('.',',') + ' kg' : '')
       + (wv('sContenuto') ? ' \u00B7 Contenuto: ' + wv('sContenuto') : '') + '</p>';
-    return { desc: desc, det: det };
+    var detL = ['Spedizione da: ' + (from||'\u2014'), 'A: ' + (to||'\u2014'),
+      cp.n + (cp.n===1?' collo':' colli') + (cp.kg ? ' \u00B7 Peso: ' + String(cp.kg).replace('.',',') + ' kg' : '')
+      + (wv('sContenuto') ? ' \u00B7 Contenuto: ' + wv('sContenuto') : '')];
+    var cliL = [];
+    if(wv('mNome')) cliL.push('Cliente: ' + wv('mNome'));
+    if(wv('mTel')) cliL.push('Tel: ' + wv('mTel'));
+    if(wv('mMail')) cliL.push('Email: ' + wv('mMail'));
+    var cliHTML = cliL.length
+      ? '<div class="pfh" style="margin-top:2px"><div><b>' + cliL[0] + '</b>' + (cliL.length>1 ? '<br>' + cliL.slice(1).join('<br>') : '') + '</div></div>'
+      : '';
+    return { desc: desc, det: det, detL: detL, cliL: cliL, cliHTML: cliHTML };
   }
 
   var acts = document.createElement('div');
   acts.id = 'wizActs';
   acts.style.cssText = 'display:none;margin-top:12px';
   acts.innerHTML =
-    '<button class="addcart65" id="btnQuote" type="button">\uD83D\uDDA8\uFE0F STAMPA PREVENTIVO</button>'
+    '<button class="addcart65" id="btnQuote" type="button">\uD83D\uDDA8\uFE0F STAMPA E PAGA IN CONTANTI</button>'
     + '<button class="addcart65" id="btnStore" type="button" style="background:#003A70;color:#FFCC00;border-color:#FFCC00">\uD83C\uDFEA PAGA IN NEGOZIO</button>'
     + '<button class="addcart65" id="btnCartW" type="button">\uD83D\uDED2 AGGIUNGI AL CARRELLO</button>';
   pricebox.insertAdjacentElement('afterend', acts);
 
+  var steps4 = document.querySelectorAll('#pagina-preventivo .wstep');
+  var card4 = steps4.length >= 4 ? steps4[3] : null;
+  if(card4 && !document.getElementById('btnCart4')){
+    var b4 = document.createElement('button');
+    b4.id = 'btnCart4'; b4.className = 'addcart65'; b4.type = 'button';
+    b4.style.display = 'none';
+    b4.textContent = '\uD83D\uDED2 AGGIUNGI AL CARRELLO';
+    card4.appendChild(b4);
+    b4.addEventListener('click', function(){
+      if(!wizReady()) return;
+      var d = wizData();
+      CART.push({ n: d.desc, p: wizPrice() }); save(); bumpCart();
+    });
+  }
   function refreshActs(){
     var on = wizReady() && wizPrice() > 0 && !!pricebox.offsetParent;
     acts.style.display = on ? 'block' : 'none';
+    if(document.getElementById('btnCart4'))
+      document.getElementById('btnCart4').style.display = wizReady() ? 'block' : 'none';
   }
   ['input','change','click'].forEach(function(ev){
     document.getElementById('pagina-preventivo').addEventListener(ev, function(){ setTimeout(refreshActs, 60); });
@@ -255,23 +282,27 @@ document.addEventListener('DOMContentLoaded', function(){
     if(!wizReady()) return;
     var d = wizData(), t = wizPrice();
     sendSheet('da pagare', 'Paga in negozio');
-    buildPF([{ n: d.desc, p: t }], t, null, d.det);
+    buildPF([{ n: d.desc, p: t }], t, null, d.det, d.cliHTML);
   });
   document.getElementById('btnQuote').addEventListener('click', function(){
     if(!wizReady()) return;
     var d = wizData(), t = wizPrice();
-    var num = 'PR-2026-' + String(Math.floor(Math.random()*900)+100);
-    document.getElementById('pfDoc').innerHTML =
-      '<h2>PREVENTIVO DI SPEDIZIONE</h2>'
+    sendSheet('da pagare', 'Paga in contanti');
+    var num = 'PF-2026-' + String(Math.floor(Math.random()*900)+100);
+    var html =
+      '<h2>FATTURA PRO FORMA</h2>'
       + '<div class="pfh"><div><b>Centro Post@ di Giuliani Enrico</b><br>Via L.S. Cherubini 68/D, 10138 Torino</div>'
-      + '<div style="text-align:right">Preventivo N. <b>' + num + '</b><br>Data: ' + new Date().toLocaleDateString('it-IT') + '</div></div>'
-      + d.det
-      + '<table style="margin-top:14px"><tr><th>Descrizione</th><th>Importo</th></tr>'
+      + '<div style="text-align:right">Pro forma N. <b>' + num + '</b><br>Data: ' + new Date().toLocaleDateString('it-IT') + '</div></div>'
+      + d.cliHTML + d.det
+      + '<table style="margin-top:12px"><tr><th>Descrizione</th><th>Importo</th></tr>'
       + '<tr class="pfr"><td>' + d.desc + '</td><td>\u20AC ' + t.toFixed(2) + '</td></tr>'
-      + '<tr class="pft"><td><b>TOTALE PREVENTIVO</b></td><td><b>\u20AC ' + t.toFixed(2) + '</b></td></tr></table>'
-      + '<p style="font-size:11.5px;color:#5a7a99">Preventivo valido 30 giorni. Documento non fiscale.</p>'
-      + '<div class="stamp">PREVENTIVO \u2014 NON FISCALE</div>';
-    pf.classList.add('open');
+      + '<tr class="pft"><td><b>TOTALE PRO FORMA</b></td><td><b>\u20AC ' + t.toFixed(2) + '</b></td></tr></table>'
+      + '<p style="font-size:12.5px;color:#b07d00;font-weight:800;margin:8px 0">\u23F1 DA PAGARE \u2014 pagamento in contanti in negozio</p>'
+      + '<p style="font-size:11.5px;color:#5a7a99">Documento non fiscale \u2014 richiesta di pagamento. Scontrino fiscale rilasciato in negozio al pagamento.</p>'
+      + '<div class="stamp">PRO FORMA \u2014 DA PAGARE</div>';
+    document.getElementById('pfDoc').innerHTML = html;
+    requestAnimationFrame(function(){ pf.classList.add('open'); });
+    downloadPF([{ n: d.desc, p: t }], t, null, d.detL, d.cliL);
   });
 
   }
@@ -374,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function(){
     sc.src = src; sc.onload = cb;
     document.head.appendChild(sc);
   }
-  function downloadPF(items, t, ref){
+  function downloadPF(items, t, ref, detLines, cliLines){
     loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', function(){
       try{
         var doc = new window.jspdf.jsPDF();
@@ -385,7 +416,10 @@ document.addEventListener('DOMContentLoaded', function(){
         doc.text('Via L.S. Cherubini 68/D, 10138 Torino', 14, 35);
         doc.text('Pro forma N. PF-2026-' + String(Math.floor(Math.random()*900)+100), 140, 30);
         doc.text('Data: ' + new Date().toLocaleDateString('it-IT'), 140, 35);
-        var y = 48;
+        var y = 46;
+        (cliLines || []).forEach(function(l){ doc.text(l, 14, y); y += 5; });
+        (detLines || []).forEach(function(l){ doc.text(doc.splitTextToSize(l, 180), 14, y); y += 5; });
+        y += 4;
         doc.setFont(undefined, 'bold');
         doc.text('Descrizione', 14, y); doc.text('Importo', 196, y, {align:'right'});
         doc.setDrawColor(0,58,112); doc.line(14, y+2, 196, y+2);
@@ -398,13 +432,20 @@ document.addEventListener('DOMContentLoaded', function(){
         y += 4; doc.setFont(undefined, 'bold'); doc.setFontSize(12);
         doc.text('TOTALE: EUR ' + t.toFixed(2), 196, y, {align:'right'});
         y += 13;
-        doc.setTextColor(28,122,61); doc.setFontSize(11);
-        doc.text('PAGATA via PayPal - ordine ' + ref, 14, y);
-        doc.setTextColor(180,30,30); doc.setFontSize(13);
-        doc.text('PRO FORMA - PAGATA', 105, y+18, {align:'center'});
+        if(ref){
+          doc.setTextColor(28,122,61); doc.setFontSize(11);
+          doc.text('PAGATA via PayPal - ordine ' + ref, 14, y);
+          doc.setTextColor(180,30,30); doc.setFontSize(13);
+          doc.text('PRO FORMA - PAGATA', 105, y+18, {align:'center'});
+        } else {
+          doc.setTextColor(176,125,0); doc.setFontSize(11);
+          doc.text('DA PAGARE - pagamento in contanti in negozio', 14, y);
+          doc.setTextColor(180,30,30); doc.setFontSize(13);
+          doc.text('PRO FORMA - DA PAGARE', 105, y+18, {align:'center'});
+        }
         doc.setTextColor(90,110,130); doc.setFontSize(8);
         doc.text('Documento non fiscale - richiesta di pagamento. Scontrino fiscale rilasciato in negozio.', 14, y+32);
-        doc.save('pro-forma-' + ref + '.pdf');
+        doc.save(ref ? ('pro-forma-' + ref + '.pdf') : 'pro-forma-da-pagare.pdf');
       }catch(e){}
     });
   }
