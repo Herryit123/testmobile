@@ -137,6 +137,7 @@ document.addEventListener('DOMContentLoaded', function(){
     + '<div class="cp-ft">'
     + '<div class="cp-tot"><span>TOTALE</span><b id="cpTot">\u20AC 0,00</b></div>'
     + '<div id="cpPP" style="min-height:50px"></div>'
+    + '<button class="cp-act cp-cash" id="cpCash">\uD83D\uDDA8\uFE0F STAMPA E PAGA IN CONTANTI</button>'
     + '<button class="cp-act cp-pf" id="cpPf">\uD83D\uDCC4 FATTURA PRO FORMA</button>'
     + '<button class="cp-act cp-wa" id="cpWa">\uD83D\uDCAC INVIA ORDINE SU WHATSAPP</button>'
     + '<button class="cp-act cp-cl" id="cpCl">\u2715 Chiudi</button></div>';
@@ -205,6 +206,12 @@ document.addEventListener('DOMContentLoaded', function(){
     if(!CART.length) return;
     buildPF(CART.slice(), tot(), null, infoBlocks(collectInfo(CART)), '');
   });
+  document.getElementById('cpCash').addEventListener('click', function(){
+    if(!CART.length) return;
+    var info = collectInfo(CART);
+    buildPF(CART.slice(), tot(), null, infoBlocks(info), '');
+    downloadPF(CART.slice(), tot(), null, info);
+  });
 
   var pricebox = document.querySelector('#pagina-preventivo .pricebox');
   if(pricebox){
@@ -258,32 +265,20 @@ document.addEventListener('DOMContentLoaded', function(){
     return { desc: desc, det: det, detL: detL, cliL: cliL, cliHTML: cliHTML };
   }
 
-  var acts = document.createElement('div');
-  acts.id = 'wizActs';
-  acts.style.cssText = 'display:none;margin-top:12px';
-  acts.innerHTML =
-    '<button class="addcart65" id="btnQuote" type="button">\uD83D\uDDA8\uFE0F STAMPA E PAGA IN CONTANTI</button>';
-  pricebox.insertAdjacentElement('afterend', acts);
+  var wizEnd = document.createElement('div');
+  wizEnd.id = 'wizEnd';
+  wizEnd.style.cssText = 'display:none;margin-top:12px';
+  wizEnd.innerHTML =
+    '<button class="addcart65" id="btnCart4" type="button">\uD83D\uDED2 AGGIUNGI AL CARRELLO</button>'
+    + '<button class="addcart65" id="btnQuote" type="button" style="margin-top:8px;background:#003A70;color:#FFCC00;border-color:#FFCC00">\uD83D\uDDA8\uFE0F STAMPA E PAGA IN CONTANTI</button>';
+  var card4 = document.querySelectorAll('#pagina-preventivo .wstep');
+  if(card4.length >= 4) card4[3].appendChild(wizEnd);
+  else pricebox.insertAdjacentElement('afterend', wizEnd);
 
-  var steps4 = document.querySelectorAll('#pagina-preventivo .wstep');
-  var card4 = steps4.length >= 4 ? steps4[3] : null;
-  if(card4 && !document.getElementById('btnCart4')){
-    var b4 = document.createElement('button');
-    b4.id = 'btnCart4'; b4.className = 'addcart65'; b4.type = 'button';
-    b4.style.display = 'none';
-    b4.textContent = '\uD83D\uDED2 AGGIUNGI AL CARRELLO';
-    card4.appendChild(b4);
-    b4.addEventListener('click', function(){
-      if(!wizReady()) return;
-      var d = wizData();
-      CART.push({ n: d.desc, p: wizPrice(), det: d.detL, cli: d.cliL }); save(); bumpCart();
-    });
-  }
   function refreshActs(){
-    var on = wizReady() && wizPrice() > 0 && !!pricebox.offsetParent;
-    acts.style.display = on ? 'block' : 'none';
-    if(document.getElementById('btnCart4'))
-      document.getElementById('btnCart4').style.display = wizReady() ? 'block' : 'none';
+    var on = wizReady() && wizPrice() > 0;
+    var we = document.getElementById('wizEnd');
+    if(we) we.style.display = on ? 'block' : 'none';
   }
   ['input','change','click'].forEach(function(ev){
     document.getElementById('pagina-preventivo').addEventListener(ev, function(){ setTimeout(refreshActs, 60); });
@@ -486,6 +481,7 @@ document.addEventListener('DOMContentLoaded', function(){
     document.getElementById('cpTot').textContent = '\u20AC ' + t.toFixed(2);
     document.getElementById('cpPf').style.display = CART.length ? '' : 'none';
     document.getElementById('cpWa').style.display = CART.length ? '' : 'none';
+    document.getElementById('cpCash').style.display = CART.length ? '' : 'none';
     renderPP();
   }
 
@@ -496,5 +492,9 @@ document.addEventListener('DOMContentLoaded', function(){
   cartBtn.addEventListener('click', function(){
     panel.classList.add('open'); renderCart();
   });
+  var bInv = document.getElementById('btnInvio');
+  if(bInv){ bInv.addEventListener('click', function(){
+    var o = document.getElementById('invioOpts'); if(o) o.classList.toggle('open');
+  }); }
   renderCart();
 });

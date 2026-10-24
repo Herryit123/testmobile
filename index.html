@@ -299,9 +299,11 @@
   </div>
   <div class="wiznav"><button class="wback" onclick="wizGo(3)"><span data-it="← Modifica preventivo">← Modifica preventivo</span></button><span></span></div>
   <div class="send no-print">
-    <a class="btn-wa" id="btnWA" href="#" target="_blank" onclick="return sendWA(event)"><span data-it="💬 Invia su WhatsApp">💬 Invia su WhatsApp</span></a>
-    <a class="btn-mail" id="btnMail" href="#" onclick="return sendMail(event)"><span data-it="✉️ Invia via Email">✉️ Invia via Email</span></a>
-    <button class="btn-print no-print" onclick="return sendPrint(event)"><span data-it="🖨️ Stampa / PDF">🖨️ Stampa / PDF</span></button>
+    <button class="btn-invio no-print" id="btnInvio" type="button"><span data-it="📤 INVIA">📤 INVIA</span></button>
+    <div class="invio-opts" id="invioOpts">
+      <a class="btn-wa" id="btnWA" href="#" target="_blank" onclick="return sendWA(event)"><span data-it="💬 Invia su WhatsApp">💬 Invia su WhatsApp</span></a>
+      <a class="btn-mail" id="btnMail" href="#" onclick="return sendMail(event)"><span data-it="✉️ Invia via Email">✉️ Invia via Email</span></a>
+    </div>
   </div>
   <div class="note" style="margin-top:12px"><span data-it="Cliccando "Invia" si aprirà WhatsApp o il tuo programma di posta con il riepilogo già compilato: dovrai solo premere invio. I dati non vengono salvati né trasmessi ad altri.">Cliccando "Invia" si aprirà WhatsApp o il tuo programma di posta con il riepilogo già compilato: dovrai solo premere invio. I dati non vengono salvati né trasmessi ad altri.</span></div>
 </div>
