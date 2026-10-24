@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function(){
   if(head && head.parentElement) head.parentElement.insertBefore(chips, head.nextSibling);
   var SHORT = {'Identit\u00E0 Digitale, PEC e Firma':'Identit\u00E0 Digitale','Casa e Immobili':'Casa','Certificati e Stato Civile':'Certificati','Casellario Giudiziale':'Casellario','Auto e Motori':'Auto','Aziende e Societ\u00E0':'Aziende','Persone e Reputazione':'Persone','Indagini e Recupero Crediti':'Indagini'};
   chips.querySelectorAll('.chip').forEach(function(c){
-    if(c.dataset.group && SHORT[c.dataset.group]) c.textContent = SHORT[c.dataset.group];
+    if(c.dataset.group && SHORT[c.dataset.group] && !c.dataset.hi) c.textContent = SHORT[c.dataset.group];
   });
 });
 
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function(){
   var qq = document.getElementById('q');
   if(!qq || listino.querySelector('.lens65float')) return;
   var lens = document.createElement('button');
-  lens.className = 'lens65float'; lens.type = 'button'; lens.setAttribute('aria-label','Cerca un servizio');
+  lens.className = 'lens65float'; lens.type = 'button'; try{lens.setAttribute('aria-label',(HL[LANG]&&HL[LANG].liLens)||HL.it.liLens);}catch(e){}
   lens.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="20" y1="20" x2="16.5" y2="16.5"></line></svg>';
   listino.appendChild(lens);
   var sr = qq.closest('.search-row') || qq.parentElement;
