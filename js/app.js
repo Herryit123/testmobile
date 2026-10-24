@@ -142,17 +142,10 @@ document.addEventListener('DOMContentLoaded', function(){
     + '<button class="cp-act cp-cl" id="cpCl">\u2715 Chiudi</button></div>';
   document.body.appendChild(panel);
 
-  var pf = document.createElement('div');
-  pf.className = 'pfover65';
-  pf.innerHTML = '<div class="pf-doc" id="pfDoc"></div>'
-    + '<div class="pf-ft"><button onclick="window.print()">\uD83D\uDDA8\uFE0F Stampa / Salva PDF</button><button id="pfCl">\u2715 Chiudi</button></div>';
-  document.body.appendChild(pf);
-
   document.getElementById('cpCl').addEventListener('click', function(){
     panel.classList.remove('open');
-    if(LAST_PAID){ var lp = LAST_PAID; LAST_PAID = null; downloadPF(lp.items, lp.tot, lp.ref); }
+    if(LAST_PAID){ var lp = LAST_PAID; LAST_PAID = null; downloadPF(lp.items, lp.tot, lp.ref, lp.info); }
   });
-  document.getElementById('pfCl').addEventListener('click', function(){ pf.classList.remove('open'); });
   panel.addEventListener('click', function(e){
     var d = e.target.closest('[data-del]');
     if(d){ CART.splice(+d.dataset.del,1); save(); renderPP(); }
@@ -162,29 +155,55 @@ document.addEventListener('DOMContentLoaded', function(){
     var msg = 'Buongiorno, vorrei confermare questo ordine:\n' + CART.map(function(c){ return '\u2022 ' + c.n + ' \u2014 \u20AC ' + c.p.toFixed(2); }).join('\n') + '\nTotale: \u20AC ' + tot().toFixed(2) + '\nGrazie!';
     window.open('https://wa.me/' + (typeof WHATSAPP !== 'undefined' ? WHATSAPP : '') + '?text=' + encodeURIComponent(msg), '_blank');
   });
+  function openDoc(html){
+    var old = document.getElementById('docOverlay65'); if(old) old.remove();
+    var o = document.createElement('div'); o.id = 'docOverlay65';
+    o.style.cssText = 'position:fixed;inset:0;z-index:9990;background:#fff;display:flex;flex-direction:column;font-family:Lato,sans-serif';
+    o.innerHTML = '<div style="flex:1;overflow-y:auto;padding:26px 22px;color:#1c2833;font-size:13.5px">' + html + '</div>'
+      + '<div style="flex:none;padding:12px 14px calc(12px + env(safe-area-inset-bottom));border-top:2px solid #d4e0ec;display:flex;gap:10px;background:#fff">'
+      + '<button id="docPrint65" style="flex:1;padding:13px;border-radius:12px;font:800 13px Poppins;cursor:pointer;border:2px solid #003A70;background:#003A70;color:#fff">\uD83D\uDDA8\uFE0F Stampa / Salva PDF</button>'
+      + '<button id="docClose65" style="flex:1;padding:13px;border-radius:12px;font:800 13px Poppins;cursor:pointer;border:2px solid #003A70;background:#fff;color:#003A70">\u2715 Chiudi</button></div>';
+    document.body.appendChild(o);
+    document.getElementById('docClose65').addEventListener('click', function(){ o.remove(); });
+    document.getElementById('docPrint65').addEventListener('click', function(){ window.print(); });
+  }
+  function collectInfo(items){
+    var det = {}, cli = {};
+    items.forEach(function(c){
+      (c.det || []).forEach(function(l){ det[l] = 1; });
+      (c.cli || []).forEach(function(l){ cli[l] = 1; });
+    });
+    return { det: Object.keys(det), cli: Object.keys(cli) };
+  }
+  function infoBlocks(info){
+    var h = '';
+    if(info.cli.length) h += '<div style="display:flex;justify-content:space-between;gap:14px;margin:14px 0 0;font-size:12.5px;line-height:1.5"><div><b>' + info.cli[0] + '</b>' + (info.cli.length > 1 ? '<br>' + info.cli.slice(1).join('<br>') : '') + '</div></div>';
+    if(info.det.length) h += '<div style="display:flex;justify-content:space-between;gap:14px;margin:8px 0 0;font-size:12.5px;line-height:1.5"><div>' + info.det.join('<br>') + '</div></div>';
+    return h;
+  }
   function buildPF(items, t, paidRef, detHTML, cliHTML){
     var rows = '';
-    items.forEach(function(c){ rows += '<tr class="pfr"><td>' + c.n + '</td><td>\u20AC ' + c.p.toFixed(2) + '</td></tr>'; });
+    items.forEach(function(c){ rows += '<tr><td style="border:1px solid #d4e0ec;padding:8px">' + c.n + '</td><td style="border:1px solid #d4e0ec;padding:8px;text-align:right;font-weight:700;white-space:nowrap">\u20AC ' + c.p.toFixed(2) + '</td></tr>'; });
     var num = 'PF-2026-' + String(Math.floor(Math.random()*900)+100);
     var payline = paidRef
       ? '<p style="font-size:12.5px;color:#1c7a3d;font-weight:800;margin:8px 0">\u2705 PAGATA via PayPal \u2014 ordine ' + paidRef + '</p>'
-      : '<p style="font-size:12.5px;color:#b07d00;font-weight:800;margin:8px 0">\u23F1 Da pagare \u2014 il pagamento avverr\u00E0 in negozio o via link</p>';
-    document.getElementById('pfDoc').innerHTML =
-      '<h2>FATTURA PRO FORMA</h2>'
-      + '<div class="pfh"><div><b>Centro Post@ di Giuliani Enrico</b><br>Via L.S. Cherubini 68/D, 10138 Torino</div>'
+      : '<p style="font-size:12.5px;color:#b07d00;font-weight:800;margin:8px 0">\u23F1 DA PAGARE \u2014 pagamento in negozio</p>';
+    var htmlPF =
+      '<h2 style="font:800 19px Poppins;color:#003A70;text-align:center">FATTURA PRO FORMA</h2>'
+      + '<div style="display:flex;justify-content:space-between;gap:14px;margin:16px 0;font-size:12.5px;line-height:1.5"><div><b>Centro Post@ di Giuliani Enrico</b><br>Via L.S. Cherubini 68/D, 10138 Torino</div>'
       + '<div style="text-align:right">Pro forma N. <b>' + num + '</b><br>Data: ' + new Date().toLocaleDateString('it-IT') + '</div></div>'
       + (cliHTML || '')
       + (detHTML || '')
-      + '<table><tr><th>Descrizione</th><th>Importo</th></tr>' + rows
-      + '<tr class="pft"><td><b>TOTALE PRO FORMA</b></td><td><b>\u20AC ' + t.toFixed(2) + '</b></td></tr></table>'
+      + '<table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:12.5px"><tr><th style="background:#003A70;color:#FFCC00;padding:8px;font-family:Poppins;text-align:left">Descrizione</th><th style="background:#003A70;color:#FFCC00;padding:8px;font-family:Poppins">Importo</th></tr>' + rows
+      + '<tr><td style="border:1px solid #d4e0ec;padding:8px"><b>TOTALE PRO FORMA</b></td><td style="border:1px solid #d4e0ec;padding:8px;text-align:right;font:800 16px Poppins;color:#003A70;background:#FFF3C4"><b>\u20AC ' + t.toFixed(2) + '</b></td></tr></table>'
       + payline
       + '<p style="font-size:11.5px;color:#5a7a99">Documento non fiscale \u2014 richiesta di pagamento. Lo scontrino fiscale viene rilasciato in negozio al momento del pagamento/rilascio del servizio.</p>'
-      + '<div class="stamp">PRO FORMA \u2014 ' + (paidRef ? 'PAGATA' : 'DA PAGARE') + '</div>';
-    pf.classList.add('open');
+      + '<div style="margin-top:18px;text-align:center;border:2.5px dashed #c62828;color:#c62828;font:800 12.5px Poppins;padding:9px;letter-spacing:2px">PRO FORMA \u2014 ' + (paidRef ? 'PAGATA' : 'DA PAGARE') + '</div>';
+    openDoc(htmlPF);
   }
   document.getElementById('cpPf').addEventListener('click', function(){
     if(!CART.length) return;
-    buildPF(CART.slice(), tot(), null);
+    buildPF(CART.slice(), tot(), null, infoBlocks(collectInfo(CART)), '');
   });
 
   var pricebox = document.querySelector('#pagina-preventivo .pricebox');
@@ -243,9 +262,7 @@ document.addEventListener('DOMContentLoaded', function(){
   acts.id = 'wizActs';
   acts.style.cssText = 'display:none;margin-top:12px';
   acts.innerHTML =
-    '<button class="addcart65" id="btnQuote" type="button">\uD83D\uDDA8\uFE0F STAMPA E PAGA IN CONTANTI</button>'
-    + '<button class="addcart65" id="btnStore" type="button" style="background:#003A70;color:#FFCC00;border-color:#FFCC00">\uD83C\uDFEA PAGA IN NEGOZIO</button>'
-    + '<button class="addcart65" id="btnCartW" type="button">\uD83D\uDED2 AGGIUNGI AL CARRELLO</button>';
+    '<button class="addcart65" id="btnQuote" type="button">\uD83D\uDDA8\uFE0F STAMPA E PAGA IN CONTANTI</button>';
   pricebox.insertAdjacentElement('afterend', acts);
 
   var steps4 = document.querySelectorAll('#pagina-preventivo .wstep');
@@ -259,7 +276,7 @@ document.addEventListener('DOMContentLoaded', function(){
     b4.addEventListener('click', function(){
       if(!wizReady()) return;
       var d = wizData();
-      CART.push({ n: d.desc, p: wizPrice() }); save(); bumpCart();
+      CART.push({ n: d.desc, p: wizPrice(), det: d.detL, cli: d.cliL }); save(); bumpCart();
     });
   }
   function refreshActs(){
@@ -273,36 +290,12 @@ document.addEventListener('DOMContentLoaded', function(){
   });
   refreshActs();
 
-  document.getElementById('btnCartW').addEventListener('click', function(){
-    if(!wizReady()) return;
-    var d = wizData();
-    CART.push({ n: d.desc, p: wizPrice() }); save(); bumpCart();
-  });
-  document.getElementById('btnStore').addEventListener('click', function(){
-    if(!wizReady()) return;
-    var d = wizData(), t = wizPrice();
-    sendSheet('da pagare', 'Paga in negozio');
-    buildPF([{ n: d.desc, p: t }], t, null, d.det, d.cliHTML);
-  });
   document.getElementById('btnQuote').addEventListener('click', function(){
     if(!wizReady()) return;
     var d = wizData(), t = wizPrice();
     sendSheet('da pagare', 'Paga in contanti');
-    var num = 'PF-2026-' + String(Math.floor(Math.random()*900)+100);
-    var html =
-      '<h2>FATTURA PRO FORMA</h2>'
-      + '<div class="pfh"><div><b>Centro Post@ di Giuliani Enrico</b><br>Via L.S. Cherubini 68/D, 10138 Torino</div>'
-      + '<div style="text-align:right">Pro forma N. <b>' + num + '</b><br>Data: ' + new Date().toLocaleDateString('it-IT') + '</div></div>'
-      + d.cliHTML + d.det
-      + '<table style="margin-top:12px"><tr><th>Descrizione</th><th>Importo</th></tr>'
-      + '<tr class="pfr"><td>' + d.desc + '</td><td>\u20AC ' + t.toFixed(2) + '</td></tr>'
-      + '<tr class="pft"><td><b>TOTALE PRO FORMA</b></td><td><b>\u20AC ' + t.toFixed(2) + '</b></td></tr></table>'
-      + '<p style="font-size:12.5px;color:#b07d00;font-weight:800;margin:8px 0">\u23F1 DA PAGARE \u2014 pagamento in contanti in negozio</p>'
-      + '<p style="font-size:11.5px;color:#5a7a99">Documento non fiscale \u2014 richiesta di pagamento. Scontrino fiscale rilasciato in negozio al pagamento.</p>'
-      + '<div class="stamp">PRO FORMA \u2014 DA PAGARE</div>';
-    document.getElementById('pfDoc').innerHTML = html;
-    requestAnimationFrame(function(){ pf.classList.add('open'); });
-    downloadPF([{ n: d.desc, p: t }], t, null, d.detL, d.cliL);
+    buildPF([{ n: d.desc, p: t }], t, null, d.det, d.cliHTML);
+    downloadPF([{ n: d.desc, p: t }], t, null, { det: d.detL, cli: d.cliL });
   });
 
   }
@@ -405,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function(){
     sc.src = src; sc.onload = cb;
     document.head.appendChild(sc);
   }
-  function downloadPF(items, t, ref, detLines, cliLines){
+  function downloadPF(items, t, ref, info){
     loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', function(){
       try{
         var doc = new window.jspdf.jsPDF();
@@ -417,8 +410,10 @@ document.addEventListener('DOMContentLoaded', function(){
         doc.text('Pro forma N. PF-2026-' + String(Math.floor(Math.random()*900)+100), 140, 30);
         doc.text('Data: ' + new Date().toLocaleDateString('it-IT'), 140, 35);
         var y = 46;
-        (cliLines || []).forEach(function(l){ doc.text(l, 14, y); y += 5; });
-        (detLines || []).forEach(function(l){ doc.text(doc.splitTextToSize(l, 180), 14, y); y += 5; });
+        if(info){
+          (info.cli || []).forEach(function(l){ doc.text(l, 14, y); y += 5; });
+          (info.det || []).forEach(function(l){ doc.text(doc.splitTextToSize(l, 180), 14, y); y += 5; });
+        }
         y += 4;
         doc.setFont(undefined, 'bold');
         doc.text('Descrizione', 14, y); doc.text('Importo', 196, y, {align:'right'});
@@ -451,7 +446,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
   function markPaid(orderId){
     var paidItems = CART.slice(), paidTot = tot();
-    LAST_PAID = { items: paidItems, tot: paidTot, ref: orderId };
+    LAST_PAID = { items: paidItems, tot: paidTot, ref: orderId, info: collectInfo(paidItems) };
     sendSheet('pagato', 'PayPal ' + orderId);
     CART = []; save();
     document.getElementById('cpBd').innerHTML =
@@ -472,7 +467,6 @@ document.addEventListener('DOMContentLoaded', function(){
     cartBtn.style.transform = 'scale(1.3)';
     setTimeout(function(){ cartBtn.style.transform = ''; }, 200);
     var t = document.createElement('div');
-    t.textContent = '\u2715 Aggiunto al carrello \u2713'.replace('\u2715 ','');
     t.style.cssText = 'position:fixed;right:80px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:945;background:#003A70;color:#FFCC00;font:800 13px Poppins;padding:9px 16px;border-radius:999px;border:2px solid #FFCC00;box-shadow:0 6px 16px rgba(0,0,0,.3);transition:opacity .4s';
     t.textContent = 'Aggiunto al carrello \u2713';
     document.body.appendChild(t);
