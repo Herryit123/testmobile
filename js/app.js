@@ -195,6 +195,43 @@ document.addEventListener('DOMContentLoaded', function(){
       panel.classList.add('open');
     });
     pricebox.insertAdjacentElement('afterend', b);
+
+    var ppWiz = document.createElement('div');
+    ppWiz.id = 'ppWiz';
+    ppWiz.style.marginTop = '10px';
+    b.insertAdjacentElement('afterend', ppWiz);
+    function wizPrice(){
+      var pr = pricebox.querySelector('.prezzo');
+      var v = pr ? parseFloat(pr.textContent.replace(/[^0-9,]/g,'').replace(',','.')) : 0;
+      return isNaN(v) ? 0 : v;
+    }
+    function renderWizPP(){
+      loadPP(function(){
+        if(!window.paypal || !document.getElementById('ppWiz')) return;
+        try{
+          document.getElementById('ppWiz').innerHTML = '';
+          paypal.Buttons({
+            style: { layout:'vertical', color:'gold', shape:'pill', label:'paypal', height:40 },
+            createOrder: function(d, a){
+              return a.order.create({ purchase_units: [{ amount: { value: wizPrice().toFixed(2), currency_code:'EUR' }, description:'Centro Post@ \u2014 spedizione' }] });
+            },
+            onApprove: function(d, a){
+              return a.order.capture().then(function(det){
+                sendSheet('pagato', 'PayPal ' + det.id);
+                buildPF([{n:'Spedizione (preventivo online)', p: wizPrice()}], wizPrice(), det.id);
+              });
+            },
+            onError: function(){ alert('Pagamento non riuscito. Riprova o contattaci su WhatsApp.'); }
+          }).render('#ppWiz');
+        }catch(e){}
+      });
+    }
+    if('IntersectionObserver' in window){
+      var io = new IntersectionObserver(function(es){
+        es.forEach(function(e){ if(e.isIntersecting){ renderWizPP(); io.disconnect(); } });
+      }, {threshold:.2});
+      io.observe(ppWiz);
+    } else { renderWizPP(); }
   }
 
   document.querySelectorAll('#pagina-listino .card').forEach(function(card){
@@ -222,15 +259,15 @@ document.addEventListener('DOMContentLoaded', function(){
 
   function tot(){ return CART.reduce(function(a,c){ return a + c.p; }, 0); }
 
-  function loadPP(){
-    if(window.paypal) return renderPP();
+  function loadPP(cb){
+    if(window.paypal){ if(cb) return cb(); return renderPP(); }
     if(ppTries >= 3) return fallbackPP();
     if(ppInjecting) return;
     ppInjecting = true; ppTries++;
     var sc = document.createElement('script');
     sc.src = (PP_SANDBOX ? 'https://www.sandbox.paypal.com' : 'https://www.paypal.com')
       + '/sdk/js?client-id=' + PP_CLIENT_ID + '&currency=EUR&intent=capture';
-    sc.onload = function(){ ppInjecting = false; renderPP(); };
+    sc.onload = function(){ ppInjecting = false; if(cb) cb(); else renderPP(); };
     sc.onerror = function(){ ppInjecting = false; setTimeout(loadPP, 1500); };
     document.head.appendChild(sc);
     if(!ppFallbackTimer){
