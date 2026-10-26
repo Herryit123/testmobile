@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="cp-build" content="v54-popup-stampa-salva">
+<meta name="cp-build" content="v55-popup-robusto">
 <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1930,8 +1930,8 @@ document.addEventListener('DOMContentLoaded', function(){
     return h;
   }
   function askDoc(items, t, ref, info){
-    buildPF(items, t, ref, info);
-    var old = document.getElementById('ask65'); if(old) old.remove();
+    try{
+      var old = document.getElementById('ask65'); if(old) old.remove();
     var o = document.createElement('div'); o.id = 'ask65';
     o.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,25,45,.55);display:flex;align-items:center;justify-content:center;padding:18px';
     o.innerHTML = '<div style="background:#fff;border-radius:20px;max-width:380px;width:100%;padding:26px 22px;text-align:center;font-family:Lato,sans-serif;box-shadow:0 24px 60px rgba(0,0,0,.4)">'
@@ -1946,6 +1946,8 @@ document.addEventListener('DOMContentLoaded', function(){
     document.getElementById('askClose').addEventListener('click', function(){ o.remove(); });
     document.getElementById('askPrint').addEventListener('click', function(){ try{ window.print(); }catch(e){} });
     document.getElementById('askSave').addEventListener('click', function(){ downloadPF(items, t, ref, info); });
+    }catch(e){}
+    try{ buildPF(items, t, ref, info); }catch(e){}
   }
 
   function buildPF(items, t, paidRef, info){
@@ -2115,7 +2117,8 @@ document.addEventListener('DOMContentLoaded', function(){
             return a.order.capture().then(function(det){
               var di = wizData(), tp = wizPrice();
               sendSheet('pagato', 'PayPal ' + det.id);
-              askDoc([{ n: di.desc, p: tp }], tp, det.id, { det: di.detL, cli: di.cliL });
+              try{ askDoc([{ n: di.desc, p: tp }], tp, det.id, { det: di.detL, cli: di.cliL }); }
+              catch(e){ try{ downloadPF([{ n: di.desc, p: tp }], tp, det.id, { det: di.detL, cli: di.cliL }); }catch(e2){} }
             });
           },
           onError: function(){ alert('Pagamento non riuscito. Riprova o contattaci su WhatsApp.'); }
@@ -2347,7 +2350,8 @@ document.addEventListener('DOMContentLoaded', function(){
       buildPF(paidItems, paidTot, orderId, collectInfo(paidItems));
     });
     renderPP();
-    askDoc(paidItems, paidTot, orderId, collectInfo(paidItems));
+    try{ askDoc(paidItems, paidTot, orderId, collectInfo(paidItems)); }
+    catch(e){ try{ downloadPF(paidItems, paidTot, orderId, collectInfo(paidItems)); }catch(e2){} }
   }
 
   function bumpCart(){
