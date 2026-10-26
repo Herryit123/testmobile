@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="cp-build" content="v56-a4-print-fix">
+<meta name="cp-build" content="v57-tabelle-elenco-print">
 <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1926,7 +1926,7 @@ document.addEventListener('DOMContentLoaded', function(){
       + '<button id="docClose65" style="flex:1;padding:13px;border-radius:12px;font:800 13px Poppins;cursor:pointer;border:2px solid #003A70;background:#fff;color:#003A70">\u2715 Chiudi</button></div>';
     document.body.appendChild(o);
     document.getElementById('docClose65').addEventListener('click', function(){ o.remove(); });
-    document.getElementById('docPrint65').addEventListener('click', function(){ window.print(); });
+    document.getElementById('docPrint65').addEventListener('click', function(){ printDoc(); });
   }
   function collectInfo(items){
     var det = {}, cli = {};
@@ -1942,6 +1942,21 @@ document.addEventListener('DOMContentLoaded', function(){
     if(info.det.length) h += '<div style="display:flex;justify-content:space-between;gap:14px;margin:8px 0 0;font-size:12.5px;line-height:1.5"><div>' + info.det.join('<br>') + '</div></div>';
     return h;
   }
+  function printDoc(){
+    var html = null;
+    try{ html = window.__lastDoc; }catch(e){}
+    if(!html){ try{ window.print(); }catch(e){} return; }
+    var w = window.open('', '_blank');
+    if(!w){ try{ window.print(); }catch(e){} return; }
+    w.document.open();
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Fattura pro forma</title>'
+      + '<style>body{font-family:Arial,sans-serif;margin:0;padding:14mm 12mm;color:#1c2833}img{max-width:100%}@page{size:A4;margin:10mm}</style>'
+      + '</head><body>' + html + '</body></html>');
+    w.document.close();
+    try{ w.focus(); }catch(e){}
+    setTimeout(function(){ try{ w.print(); }catch(e){} }, 450);
+  }
+
   function askDoc(items, t, ref, info){
     try{
       var old = document.getElementById('ask65'); if(old) old.remove();
@@ -1957,7 +1972,7 @@ document.addEventListener('DOMContentLoaded', function(){
     document.body.appendChild(o);
     o.addEventListener('click', function(e){ if(e.target === o) o.remove(); });
     document.getElementById('askClose').addEventListener('click', function(){ o.remove(); });
-    document.getElementById('askPrint').addEventListener('click', function(){ try{ window.print(); }catch(e){} });
+    document.getElementById('askPrint').addEventListener('click', function(){ printDoc(); });
     document.getElementById('askSave').addEventListener('click', function(){ downloadPF(items, t, ref, info); });
     }catch(e){}
     try{ buildPF(items, t, ref, info); }catch(e){}
@@ -1966,54 +1981,59 @@ document.addEventListener('DOMContentLoaded', function(){
   function buildPF(items, t, paidRef, info){
     info = info || { cli: [], det: [] };
     var num = 'PF-2026-' + String(Math.floor(Math.random()*900)+100);
-    var rows = '', alt = false;
-    items.forEach(function(c){
-      rows += '<tr style="background:' + (alt ? '#f8fbfe' : '#fff') + '">'
-        + '<td style="border-bottom:1px solid #e3ebf3;padding:7px 10px;text-align:left;word-break:break-word">' + c.n + '</td>'
-        + '<td style="border-bottom:1px solid #e3ebf3;padding:7px 10px;text-align:right;white-space:nowrap;font-weight:700">\u20AC ' + c.p.toFixed(2) + '</td></tr>';
-      alt = !alt;
-    });
-    var box = function(tit, lines){
-      return '<div style="flex:1 1 250px;border:1px solid #cfdae6;border-radius:4px;overflow:hidden">'
-        + '<div style="background:#eef3f9;border-bottom:1px solid #cfdae6;padding:6px 12px;font:700 10px Poppins;color:#003A70;text-transform:uppercase;letter-spacing:1px">' + tit + '</div>'
-        + '<div style="padding:9px 12px">' + (lines.length ? lines.join('<br>') : '&nbsp;') + '</div></div>';
+    var list = function(lines){
+      if(!lines.length) return '<div style=\'padding:6px 10px;font-size:11px;color:#8aa0b8\'>\u2014</div>';
+      return lines.map(function(l){
+        return '<div style=\'padding:3px 10px;font-size:11px;border-bottom:1px dotted #dbe4ee;word-break:break-word\'>\u2022 ' + l + '</div>';
+      }).join('');
     };
     var badge = paidRef
-      ? '<span style="display:inline-block;font:700 10px Poppins;padding:3px 10px;border-radius:3px;background:#e6f6ec;color:#1c7a3d;margin-left:6px">PAGATA \u2014 PayPal</span>'
-      : '<span style="display:inline-block;font:700 10px Poppins;padding:3px 10px;border-radius:3px;background:#fff4d6;color:#b07d00;margin-left:6px">DA PAGARE \u2014 contanti</span>';
-    var valid = paidRef ? '' : '<div style="margin:10px 24px 0;font-size:10px;color:#b07d00;font-weight:700">\u23F1 Validit\u00E0: 5 giorni</div>';
+      ? '<span style=\'display:inline-block;font:700 9px Poppins;padding:2px 8px;border-radius:3px;background:#e6f6ec;color:#1c7a3d\'>PAGATA \u2014 PayPal</span>'
+      : '<span style=\'display:inline-block;font:700 9px Poppins;padding:2px 8px;border-radius:3px;background:#fff4d6;color:#b07d00\'>DA PAGARE \u2014 contanti</span>';
+    var rows = '', alt = false;
+    items.forEach(function(c){
+      rows += '<tr style=\'background:' + (alt ? '#f8fbfe' : '#fff') + '\'><td style=\'border:1px solid #e3ebf3;padding:6px 10px;font-size:11px;word-break:break-word\'>' + c.n + '</td>'
+        + '<td style=\'border:1px solid #e3ebf3;padding:6px 10px;font-size:11px;text-align:right;white-space:nowrap;font-weight:700\'>\u20AC ' + c.p.toFixed(2) + '</td></tr>';
+      alt = !alt;
+    });
+    var valid = paidRef ? '' : '<div style=\'margin:10px 2px 0;font-size:10px;color:#b07d00;font-weight:700\'>\u23F1 Validit\u00E0: 5 giorni</div>';
     var status = paidRef
-      ? '<div style="margin:12px 24px 0;font-size:11px;color:#1c7a3d;font-weight:800">\u2705 PAGATA via PayPal \u2014 ordine ' + paidRef + '</div>'
+      ? '<div style=\'margin:10px 2px 0;font-size:11px;color:#1c7a3d;font-weight:800\'>\u2705 PAGATA via PayPal \u2014 ordine ' + paidRef + '</div>'
       : '';
     var html =
-      '<div style="font-family:Lato,sans-serif;font-size:12px;line-height:1.45;color:#1c2833">'
-      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;padding:18px 22px 12px;border-bottom:2.5px solid #003A70">'
-      +   '<div><img src="data:image/png;base64,' + LOGO + '" alt="Centro Post@" style="width:130px;display:block">'
-      +   '<div style="margin-top:8px;font-size:10px;color:#444">Centro Post@ di Giuliani Enrico<br>Via L.S. Cherubini 68/D, 10138 Torino<br>Tel. 011 6385156 \u00B7 P.IVA su richiesta</div></div>'
-      +   '<div style="text-align:right">'
-      +     '<div style="font:800 20px Poppins;color:#003A70;letter-spacing:.5px">FATTURA PRO FORMA</div>'
-      +     '<div style="font-size:11px;margin-top:6px">Numero <b style="color:#003A70">' + num + '</b> \u00B7 Data <b>' + new Date().toLocaleDateString('it-IT') + '</b><br>Pagamento' + badge + '</div>'
-      +   '</div></div>'
-      + '<div style="display:flex;justify-content:space-between;background:#f2f6fb;padding:7px 24px;font-size:10px;color:#486a8a;border-bottom:1px solid #d9e4f0">'
-      +   '<span>Documento non fiscale ai sensi DPR 633/72</span><span>Valuta: EUR (\u20AC)</span></div>'
-      + '<div style="display:flex;flex-wrap:wrap;gap:14px;padding:16px 22px">'
-      +   box('Cliente (Cessionario)', info.cli)
-      +   box('Spedizione / Dettaglio', info.det)
-      + '</div>'
-      + '<table style="width:calc(100% - 48px);margin:0 24px;border-collapse:collapse">'
-      +   '<tr><th style="background:#003A70;color:#FFCC00;font:700 10px Poppins;padding:7px 10px;text-align:left;width:70%">Descrizione</th>'
-      +   '<th style="background:#003A70;color:#FFCC00;font:700 10px Poppins;padding:7px 10px;text-align:right">Importo</th></tr>'
-      +   rows + '</table>'
-      + '<table style="margin:14px 24px 0 auto;width:230px;border-collapse:collapse">'
-      +   '<tr><td style="border:1px solid #cfdae6;padding:6px 10px;font-size:11px">Totale imponibile</td>'
-      +   '<td style="border:1px solid #cfdae6;padding:6px 10px;font-size:11px;text-align:right">\u20AC ' + t.toFixed(2) + '</td></tr>'
-      +   '<tr><td style="background:#003A70;color:#FFCC00;font:800 13px Poppins;padding:7px 10px;border:1px solid #003A70">TOTALE PRO FORMA</td>'
-      +   '<td style="background:#003A70;color:#FFCC00;font:800 13px Poppins;padding:7px 10px;text-align:right;border:1px solid #003A70">\u20AC ' + t.toFixed(2) + '</td></tr></table>'
-      + valid
-      + status
-      + '<div style="margin:18px auto 6px;width:max-content;border:3px solid #c62828;color:#c62828;font:800 15px Poppins;padding:8px 26px;letter-spacing:3px;transform:rotate(-2deg);border-radius:4px">PRO FORMA \u2014 ' + (paidRef ? 'PAGATA' : 'DA PAGARE') + '</div>'
-      + '<div style="margin:14px 24px 18px;padding-top:10px;border-top:1px solid #e3ebf3;font-size:8.5px;color:#8aa0b8;line-height:1.5">Documento non fiscale \u2014 richiesta di pagamento. Lo scontrino fiscale viene rilasciato in negozio al momento del pagamento/rilascio del servizio. Centro Post@ di Giuliani Enrico \u2014 Via L.S. Cherubini 68/D, 10138 Torino \u2014 Tel. 011 6385156.</div>'
+      '<div style=\'font-family:Arial,Lato,sans-serif;font-size:12px;color:#1c2833;line-height:1.4\'>'
+      + '<table style=\'width:100%;border-collapse:collapse\'><tr>'
+      + '<td style=\'width:55%;padding:10px 12px;vertical-align:top\'><img src=\'data:image/png;base64,' + LOGO + '\' style=\'width:125px;max-width:100%\'>'
+      + '<div style=\'font-size:10px;color:#444;margin-top:6px\'>Centro Post@ di Giuliani Enrico<br>Via L.S. Cherubini 68/D, 10138 Torino<br>Tel. 011 6385156 \u00B7 P.IVA su richiesta</div></td>'
+      + '<td style=\'padding:10px 12px;vertical-align:top;text-align:right\'><div style=\'font:800 19px Poppins;color:#003A70;letter-spacing:.5px\'>FATTURA PRO FORMA</div>'
+      + '<div style=\'font-size:11px;margin-top:6px\'>Numero <b style=\'color:#003A70\'>' + num + '</b><br>Data <b>' + new Date().toLocaleDateString('it-IT') + '</b><br>Pagamento ' + badge + '</div></td>'
+      + '</tr></table>'
+      + '<table style=\'width:100%;border-collapse:collapse\'><tr>'
+      + '<td style=\'background:#f2f6fb;padding:6px 12px;font-size:9px;color:#486a8a;border-top:1px solid #d9e4f0;border-bottom:1px solid #d9e4f0\'>Documento non fiscale ai sensi DPR 633/72</td>'
+      + '<td style=\'background:#f2f6fb;padding:6px 12px;font-size:9px;color:#486a8a;text-align:right;border-top:1px solid #d9e4f0;border-bottom:1px solid #d9e4f0\'>Valuta: EUR (\u20AC)</td>'
+      + '</tr></table>'
+      + '<table style=\'width:100%;border-collapse:collapse;margin-top:12px\'><tr>'
+      + '<td style=\'width:50%;vertical-align:top;padding-right:6px\'><div style=\'border:1px solid #cfdae6;border-radius:4px;overflow:hidden\'>'
+      +   '<div style=\'background:#eef3f9;border-bottom:1px solid #cfdae6;padding:6px 10px;font:700 9.5px Poppins;color:#003A70;text-transform:uppercase;letter-spacing:1px\'>Cliente (Cessionario)</div>'
+      +   list(info.cli) + '</div></td>'
+      + '<td style=\'vertical-align:top;padding-left:6px\'><div style=\'border:1px solid #cfdae6;border-radius:4px;overflow:hidden\'>'
+      +   '<div style=\'background:#eef3f9;border-bottom:1px solid #cfdae6;padding:6px 10px;font:700 9.5px Poppins;color:#003A70;text-transform:uppercase;letter-spacing:1px\'>Spedizione e colli</div>'
+      +   list(info.det) + '</div></td>'
+      + '</tr></table>'
+      + '<table style=\'width:100%;border-collapse:collapse;margin-top:14px\'><tr>'
+      + '<th style=\'background:#003A70;color:#FFCC00;font:700 10px Poppins;padding:7px 10px;text-align:left;border:1px solid #003A70\'>Descrizione</th>'
+      + '<th style=\'background:#003A70;color:#FFCC00;font:700 10px Poppins;padding:7px 10px;text-align:right;border:1px solid #003A70;width:110px\'>Importo</th>'
+      + '</tr>' + rows + '</table>'
+      + '<table style=\'width:240px;border-collapse:collapse;margin:12px 0 0 auto\'><tr>'
+      + '<td style=\'border:1px solid #cfdae6;padding:6px 10px;font-size:11px\'>Totale imponibile</td>'
+      + '<td style=\'border:1px solid #cfdae6;padding:6px 10px;font-size:11px;text-align:right\'>\u20AC ' + t.toFixed(2) + '</td></tr><tr>'
+      + '<td style=\'background:#003A70;color:#FFCC00;font:800 13px Poppins;padding:7px 10px;border:1px solid #003A70\'>TOTALE PRO FORMA</td>'
+      + '<td style=\'background:#003A70;color:#FFCC00;font:800 13px Poppins;padding:7px 10px;text-align:right;border:1px solid #003A70\'>\u20AC ' + t.toFixed(2) + '</td></tr></table>'
+      + valid + status
+      + '<div style=\'margin:18px auto 8px;width:max-content;border:3px solid #c62828;color:#c62828;font:800 15px Poppins;padding:8px 26px;letter-spacing:3px;text-align:center\'>PRO FORMA \u2014 ' + (paidRef ? 'PAGATA' : 'DA PAGARE') + '</div>'
+      + '<div style=\'margin-top:12px;padding-top:8px;border-top:1px solid #e3ebf3;font-size:8.5px;color:#8aa0b8;line-height:1.5\'>Documento non fiscale \u2014 richiesta di pagamento. Lo scontrino fiscale viene rilasciato in negozio al momento del pagamento/rilascio del servizio.<br>Centro Post@ di Giuliani Enrico \u2014 Via L.S. Cherubini 68/D, 10138 Torino \u2014 Tel. 011 6385156.</div>'
       + '</div>';
+    try{ window.__lastDoc = html; }catch(e){}
     openDoc(html);
   }
 
