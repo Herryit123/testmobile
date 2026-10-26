@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="cp-build" content="v61-fix-colli-scope">
+<meta name="cp-build" content="v63-proforma-diretta">
 <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1922,11 +1922,12 @@ document.addEventListener('DOMContentLoaded', function(){
     o.style.cssText = 'position:fixed;inset:0;z-index:9990;background:#fff;display:flex;flex-direction:column;font-family:Lato,sans-serif';
     o.innerHTML = '<div style="flex:1;overflow-y:auto;padding:14px;background:#e9edf2"><div class="docA4" style="color:#1c2833">' + html + '</div></div>'
       + '<div style="flex:none;padding:12px 14px calc(12px + env(safe-area-inset-bottom));border-top:2px solid #d4e0ec;display:flex;gap:10px;background:#fff">'
-      + '<button id="docPrint65" style="flex:1;padding:13px;border-radius:12px;font:800 13px Poppins;cursor:pointer;border:2px solid #003A70;background:#003A70;color:#fff">\uD83D\uDDA8\uFE0F Stampa / Salva PDF</button>'
+      + '<button id="docPrint65" style="flex:1;padding:13px;border-radius:12px;font:800 13px Poppins;cursor:pointer;border:2px solid #003A70;background:#003A70;color:#fff">\uD83D\uDDA8\uFE0F Stampa</button>'+ '<button id="docSave65" style="flex:1;padding:13px;border-radius:12px;font:800 13px Poppins;cursor:pointer;border:2px solid #003A70;background:#FFCC00;color:#00263F">\uD83D\uDCBE Salva PDF</button>'
       + '<button id="docClose65" style="flex:1;padding:13px;border-radius:12px;font:800 13px Poppins;cursor:pointer;border:2px solid #003A70;background:#fff;color:#003A70">\u2715 Chiudi</button></div>';
     document.body.appendChild(o);
     document.getElementById('docClose65').addEventListener('click', function(){ o.remove(); });
     document.getElementById('docPrint65').addEventListener('click', function(){ printDoc(); });
+    document.getElementById('docSave65').addEventListener('click', function(){ try{ downloadPF(window.__lastItems || [], window.__lastTot || 0, window.__lastRef || null, window.__lastInfo || null); }catch(e){} });
   }
   function collectInfo(items){
     var det = {}, cli = {};
@@ -1965,25 +1966,16 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   function askDoc(items, t, ref, info){
-    var okDoc = true;
-    try{ buildPF(items, t, ref, info); }catch(e){ okDoc = false; }
-    try{
-      var old = document.getElementById('ask65'); if(old) old.remove();
-    var o = document.createElement('div'); o.id = 'ask65';
-    o.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,25,45,.55);display:flex;align-items:center;justify-content:center;padding:18px';
-    o.innerHTML = '<div style="background:#fff;border-radius:20px;max-width:380px;width:100%;padding:26px 22px;text-align:center;font-family:Lato,sans-serif;box-shadow:0 24px 60px rgba(0,0,0,.4)">'
-      + '<div style="font-size:44px">\u2705</div>'
-      + '<h3 style="font:800 19px Poppins;color:#003A70;margin:10px 0 4px">' + (ref ? 'Pagamento ricevuto!' : 'Pro forma pronta!') + '</h3>'
-      + '<p style="color:#5a7a99;font-size:13px;margin-bottom:18px">Cosa vuoi fare col documento?</p>'
-      + '<button id="askPrint" style="display:block;width:100%;padding:16px;border-radius:14px;border:2.5px solid #003A70;background:#003A70;color:#FFCC00;font:800 16px Poppins;cursor:pointer;margin-bottom:10px">\uD83D\uDDA8\uFE0F STAMPA</button>'
-      + '<button id="askSave" style="display:block;width:100%;padding:16px;border-radius:14px;border:2.5px solid #003A70;background:#FFCC00;color:#00263F;font:800 16px Poppins;cursor:pointer;margin-bottom:12px">\uD83D\uDCBE SALVA SUL DISPOSITIVO</button>'
-      + '<button id="askClose" style="background:none;border:none;color:#8aa0b8;font:700 12px Poppins;cursor:pointer">\u2715 Chiudi</button></div>';
-    document.body.appendChild(o);
-    o.addEventListener('click', function(e){ if(e.target === o) o.remove(); });
-    document.getElementById('askClose').addEventListener('click', function(){ o.remove(); });
-    document.getElementById('askPrint').addEventListener('click', function(){ printDoc(); });
-    document.getElementById('askSave').addEventListener('click', function(){ downloadPF(items, t, ref, info); });
-    }catch(e){}
+    var ok = true;
+    try{ buildPF(items, t, ref, info); }catch(e){ ok = false; }
+    if(!ok){
+      try{ downloadPF(items, t, ref, info); }catch(e){}
+      var w = document.createElement('div');
+      w.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:10000;background:#c62828;color:#fff;font:700 12px Lato,sans-serif;padding:10px 18px;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,.3)';
+      w.textContent = 'Errore visualizzazione \u2014 PDF scaricato comunque';
+      document.body.appendChild(w);
+      setTimeout(function(){ try{ w.remove(); }catch(e){} }, 5000);
+    }
   }
 
   function buildPF(items, t, paidRef, info){
@@ -2090,7 +2082,7 @@ document.addEventListener('DOMContentLoaded', function(){
       + '<td style="text-align:center;font-size:11px"><div style="border-top:1px solid #000;width:80%;margin:0 auto"></div>Firma del Responsabile</td>'
       + '</tr></table>'
       + '</div>';
-    try{ window.__lastDoc = html; }catch(e){}
+    try{ window.__lastDoc = html; window.__lastItems = items; window.__lastTot = t; window.__lastRef = paidRef; window.__lastInfo = info; }catch(e){}
     openDoc(html);
   }
 
@@ -2206,10 +2198,13 @@ document.addEventListener('DOMContentLoaded', function(){
           },
           onApprove: function(d, a){
             return a.order.capture().then(function(det){
-              var di = wizData(), tp = wizPrice();
-              sendSheet('pagato', 'PayPal ' + det.id);
-              try{ askDoc([{ n: di.desc, p: tp }], tp, det.id, { det: di.detL, cli: di.cliL }); }
-              catch(e){ try{ downloadPF([{ n: di.desc, p: tp }], tp, det.id, { det: di.detL, cli: di.cliL }); }catch(e2){} }
+              try{
+                var di = wizData(), tp = wizPrice();
+                sendSheet('pagato', 'PayPal ' + det.id);
+                askDoc([{ n: di.desc, p: tp }], tp, det.id, { det: di.detL, cli: di.cliL });
+              }catch(err){
+                try{ downloadPF([{ n: 'Spedizione', p: 0 }], 0, det.id, null); }catch(e2){}
+              }
             });
           },
           onError: function(){ alert('Pagamento non riuscito. Riprova o contattaci su WhatsApp.'); }
