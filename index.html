@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="cp-build" content="v57-tabelle-elenco-print">
+<meta name="cp-build" content="v58-print-iframe">
 <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1946,18 +1946,26 @@ document.addEventListener('DOMContentLoaded', function(){
     var html = null;
     try{ html = window.__lastDoc; }catch(e){}
     if(!html){ try{ window.print(); }catch(e){} return; }
-    var w = window.open('', '_blank');
-    if(!w){ try{ window.print(); }catch(e){} return; }
-    w.document.open();
-    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Fattura pro forma</title>'
-      + '<style>body{font-family:Arial,sans-serif;margin:0;padding:14mm 12mm;color:#1c2833}img{max-width:100%}@page{size:A4;margin:10mm}</style>'
+    var fr = document.createElement('iframe');
+    fr.setAttribute('aria-hidden', 'true');
+    fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    document.body.appendChild(fr);
+    var d = fr.contentWindow.document;
+    d.open();
+    d.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Fattura pro forma</title>'
+      + '<style>body{font-family:Arial,sans-serif;margin:0;padding:8mm;color:#1c2833;font-size:12px;line-height:1.4}'
+      + 'img{max-width:100%}table{border-collapse:collapse}@page{size:A4;margin:10mm}</style>'
       + '</head><body>' + html + '</body></html>');
-    w.document.close();
-    try{ w.focus(); }catch(e){}
-    setTimeout(function(){ try{ w.print(); }catch(e){} }, 450);
+    d.close();
+    try{ fr.contentWindow.focus(); }catch(e){}
+    setTimeout(function(){
+      try{ fr.contentWindow.print(); }catch(e){}
+      setTimeout(function(){ try{ fr.remove(); }catch(e){} }, 3000);
+    }, 700);
   }
 
   function askDoc(items, t, ref, info){
+    try{ buildPF(items, t, ref, info); }catch(e){}
     try{
       var old = document.getElementById('ask65'); if(old) old.remove();
     var o = document.createElement('div'); o.id = 'ask65';
@@ -1975,7 +1983,6 @@ document.addEventListener('DOMContentLoaded', function(){
     document.getElementById('askPrint').addEventListener('click', function(){ printDoc(); });
     document.getElementById('askSave').addEventListener('click', function(){ downloadPF(items, t, ref, info); });
     }catch(e){}
-    try{ buildPF(items, t, ref, info); }catch(e){}
   }
 
   function buildPF(items, t, paidRef, info){
