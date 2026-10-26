@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="cp-build" content="v51-paypal-diretti-gating">
+<meta name="cp-build" content="v52-fix-dati-colli">
 <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1989,9 +1989,7 @@ document.addEventListener('DOMContentLoaded', function(){
     return isNaN(v) ? 0 : v;
   }
   function wizColliPeso(){
-    var rows = Array.prototype.filter.call(
-      document.querySelectorAll('#nazBody tr, #intBody tr'),
-      function(r){ return r.offsetParent !== null; });
+    var rows = Array.prototype.slice.call(document.querySelectorAll('#nazBody tr, #intBody tr'));
     var peso = 0, lines = [];
     var cellVal = function(r, i){
       var c = r.cells && r.cells[i]; if(!c) return '';
@@ -2023,10 +2021,14 @@ document.addEventListener('DOMContentLoaded', function(){
   }
   function wizData(){
     var cp = wizColliPeso();
-    var from = [wv('mNome'), [wv('mVia'), wv('mCiv')].filter(Boolean).join(' '),
+    var mAddr = [wv('mVia'), wv('mCiv')].filter(Boolean).join(' ');
+    if(!mAddr && wv('gAddrM')) mAddr = wv('gAddrM');
+    var from = [wv('mNome'), mAddr,
                 [wv('mCap'), wv('mCitta')].filter(Boolean).join(' ')].filter(Boolean).join(', ');
     var toArr = [wv('dNome'), wv('dCogn')].filter(Boolean).join(' ');
-    var to = [toArr, [wv('dVia'), wv('dCiv')].filter(Boolean).join(' '),
+    var dAddr = [wv('dVia'), wv('dCiv')].filter(Boolean).join(' ');
+    if(!dAddr && wv('gAddrD')) dAddr = wv('gAddrD');
+    var to = [toArr, dAddr,
               [[wv('dCap'), wv('dCitta')].filter(Boolean).join(' '), wv('dProv')].filter(Boolean).join(' ')].filter(Boolean).join(', ');
     var desc = 'Spedizione ' + (wv('mCitta')||'——') + ' \u2192 ' + (wv('dCitta')||'——')
       + (wv('dProv') ? ' (' + wv('dProv') + ')' : '')
